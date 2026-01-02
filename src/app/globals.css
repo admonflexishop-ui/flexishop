@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --accent-color: #f59e0b; /* default */
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-white text-neutral-900;
+}
+
+/* small helper tokens (mimic FlexiShop simple UI) */
+.card {
+  @apply rounded-xl border border-neutral-200 bg-white shadow-sm;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition;
+}
+
+.btn-accent {
+  @apply btn text-white;
+  background: var(--accent-color);
+}
+
+.btn-accent:hover {
+  filter: brightness(0.95);
+}
+
+.btn-ghost {
+  @apply btn border border-neutral-200 bg-white text-neutral-900 hover:bg-neutral-50;
+}
+
+.input {
+  @apply w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2;
+  --tw-ring-color: var(--accent-color);
+}
