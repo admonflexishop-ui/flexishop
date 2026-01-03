@@ -115,8 +115,13 @@ export async function uploadProductImage(productId: string, file: File) {
   return apiFormDataRequest<any>(`/products/${productId}/image`, formData);
 }
 
-export function getProductImageUrl(productId: string): string {
-  return `${API_BASE}/products/${productId}/image`;
+export function getProductImageUrl(productId: string, cacheBuster?: string | number): string {
+  const baseUrl = `${API_BASE}/products/${productId}/image`;
+  // Agregar cache buster si se proporciona (timestamp o versión)
+  if (cacheBuster !== undefined) {
+    return `${baseUrl}?v=${cacheBuster}`;
+  }
+  return baseUrl;
 }
 
 // ============

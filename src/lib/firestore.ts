@@ -12,18 +12,27 @@ import type { Product, Branch, StoreConfig } from '@/types';
 export async function listProducts(): Promise<Product[]> {
   const products = await api.listProducts(false);
   // Transformar desde el formato del backend al formato del frontend
-  return products.map((p: any) => ({
-    id: p.id,
-    storeId: 'default', // El backend no tiene storeId, usar default
-    name: p.name,
-    price: p.price_cents / 100, // Convertir centavos a pesos
-    stock: p.stock,
-    description: p.description || '',
-    imageUrl: api.getProductImageUrl(p.id),
-    active: p.is_active === 1,
-    createdAt: p.created_at,
-    updatedAt: p.updated_at,
-  }));
+  return products.map((p: any) => {
+    // Usar el timestamp del producto como cache buster
+    // Cada vez que se carga la lista, las URLs serán actualizadas
+    const cacheBuster = p.updated_at 
+      ? new Date(p.updated_at).getTime() 
+      : Date.now();
+    
+    return {
+      id: p.id,
+      storeId: 'default', // El backend no tiene storeId, usar default
+      name: p.name,
+      price: p.price_cents / 100, // Convertir centavos a pesos
+      stock: p.stock,
+      description: p.description || '',
+      // Agregar timestamp actual como cache buster para forzar actualización de imágenes
+      imageUrl: api.getProductImageUrl(p.id, cacheBuster),
+      active: p.is_active === 1,
+      createdAt: p.created_at,
+      updatedAt: p.updated_at,
+    };
+  });
 }
 
 export async function createProduct(data: Omit<Product, 'id'>): Promise<Product> {
@@ -35,6 +44,11 @@ export async function createProduct(data: Omit<Product, 'id'>): Promise<Product>
     is_active: data.active ? 1 : 0,
   });
   
+  // Usar timestamp actual como cache buster
+  const cacheBuster = product.updated_at 
+    ? new Date(product.updated_at).getTime() 
+    : Date.now();
+  
   return {
     id: product.id,
     storeId: 'default',
@@ -42,7 +56,7 @@ export async function createProduct(data: Omit<Product, 'id'>): Promise<Product>
     price: product.price_cents / 100,
     stock: product.stock,
     description: product.description || '',
-    imageUrl: api.getProductImageUrl(product.id),
+    imageUrl: api.getProductImageUrl(product.id, cacheBuster),
     active: product.is_active === 1,
     createdAt: product.created_at,
     updatedAt: product.updated_at,
@@ -60,6 +74,9 @@ export async function updateProduct(id: string, data: Partial<Omit<Product, 'id'
   
   const product = await api.updateProduct(id, updateData);
   
+  // Usar timestamp actual como cache buster para forzar actualización
+  const cacheBuster = Date.now();
+  
   return {
     id: product.id,
     storeId: 'default',
@@ -67,7 +84,7 @@ export async function updateProduct(id: string, data: Partial<Omit<Product, 'id'
     price: product.price_cents / 100,
     stock: product.stock,
     description: product.description || '',
-    imageUrl: api.getProductImageUrl(product.id),
+    imageUrl: api.getProductImageUrl(product.id, cacheBuster),
     active: product.is_active === 1,
     createdAt: product.created_at,
     updatedAt: product.updated_at,

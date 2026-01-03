@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as imageService from '@/lib/db/product-images';
 import { CreateProductImageSchema } from '@/lib/validators';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/products/[id]/image - Obtiene la imagen de un producto
  */
@@ -29,11 +31,19 @@ export async function GET(
     const view = new Uint8Array(buffer);
     view.set(pngBytes);
     
-    // Retornar la imagen como PNG
+    // Retornar la imagen como PNG con headers para evitar caché
+    // Usar updated_at como ETag para cache busting
+    const etag = image.updated_at ? new Date(image.updated_at).getTime().toString() : Date.now().toString();
+    
     return new NextResponse(buffer, {
       headers: {
         'Content-Type': 'image/png',
         'Content-Length': image.bytes_size.toString(),
+        'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'ETag': etag,
+        'Last-Modified': image.updated_at || new Date().toUTCString(),
       },
     });
   } catch (error) {

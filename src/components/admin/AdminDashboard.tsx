@@ -191,6 +191,8 @@ export function AdminDashboard({ onLogout }: { onLogout: () => Promise<void> }) 
                             console.log('Archivo:', imageFile.name, imageFile.type, imageFile.size);
                             await api.uploadProductImage(product.id, imageFile);
                             console.log('Imagen subida exitosamente');
+                            // Forzar refresh de productos para actualizar URLs de imágenes
+                            await reload();
                           } catch (error: any) {
                             console.error('Error al subir imagen:', error);
                             console.error('Error completo:', JSON.stringify(error, null, 2));
@@ -205,6 +207,8 @@ export function AdminDashboard({ onLogout }: { onLogout: () => Promise<void> }) 
                         if (imageFile) {
                           try {
                             await api.uploadProductImage(editingProduct.id, imageFile);
+                            // Forzar refresh de productos para actualizar URLs de imágenes
+                            await reload();
                           } catch (error: any) {
                             console.error('Error al subir imagen:', error);
                             alert(`Producto actualizado pero error al subir imagen: ${error.message}`);
