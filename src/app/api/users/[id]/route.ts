@@ -10,6 +10,15 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Validar UUID
+    const { isValidUUID } = await import('@/lib/security');
+    if (!isValidUUID(params.id)) {
+      return NextResponse.json(
+        { success: false, error: 'ID de usuario inválido' },
+        { status: 400 }
+      );
+    }
+
     const user = await userService.getUserById(params.id);
     
     if (!user) {
@@ -37,7 +46,25 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const body = await request.json();
+    // Validar UUID
+    const { isValidUUID, validatePayloadSize } = await import('@/lib/security');
+    if (!isValidUUID(params.id)) {
+      return NextResponse.json(
+        { success: false, error: 'ID de usuario inválido' },
+        { status: 400 }
+      );
+    }
+
+    // Validar tamaño del body
+    const bodyText = await request.text();
+    if (!validatePayloadSize(bodyText, 10240)) {
+      return NextResponse.json(
+        { success: false, error: 'Payload demasiado grande' },
+        { status: 413 }
+      );
+    }
+
+    const body = JSON.parse(bodyText);
     const validatedData = UpdateUserSchema.parse(body);
     
     const user = await userService.updateUser(params.id, validatedData);
@@ -81,6 +108,15 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Validar UUID
+    const { isValidUUID } = await import('@/lib/security');
+    if (!isValidUUID(params.id)) {
+      return NextResponse.json(
+        { success: false, error: 'ID de usuario inválido' },
+        { status: 400 }
+      );
+    }
+
     const deleted = await userService.deleteUser(params.id);
     
     if (!deleted) {

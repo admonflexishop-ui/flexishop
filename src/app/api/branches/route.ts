@@ -30,7 +30,26 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    // Validar tamaño del body
+    const { validatePayloadSize, isValidPhone } = await import('@/lib/security');
+    const bodyText = await request.text();
+    if (!validatePayloadSize(bodyText, 10240)) {
+      return NextResponse.json(
+        { success: false, error: 'Payload demasiado grande' },
+        { status: 413 }
+      );
+    }
+
+    const body = JSON.parse(bodyText);
+    
+    // Validaciones adicionales antes de Zod
+    if (body.phone && !isValidPhone(body.phone)) {
+      return NextResponse.json(
+        { success: false, error: 'Número de teléfono inválido' },
+        { status: 400 }
+      );
+    }
+
     const validatedData = CreateBranchSchema.parse(body);
     
     const branch = await branchService.createBranch(validatedData);

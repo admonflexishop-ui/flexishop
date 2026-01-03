@@ -31,7 +31,33 @@ export async function GET() {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json();
+    // Validar tamaño del body
+    const { validatePayloadSize, isValidHexColor, isValidPhone } = await import('@/lib/security');
+    const bodyText = await request.text();
+    if (!validatePayloadSize(bodyText, 10240)) {
+      return NextResponse.json(
+        { success: false, error: 'Payload demasiado grande' },
+        { status: 413 }
+      );
+    }
+
+    const body = JSON.parse(bodyText);
+    
+    // Validaciones adicionales antes de Zod
+    if (body.accent_color && !isValidHexColor(body.accent_color)) {
+      return NextResponse.json(
+        { success: false, error: 'Color de acento inválido' },
+        { status: 400 }
+      );
+    }
+
+    if (body.whatsapp && !isValidPhone(body.whatsapp)) {
+      return NextResponse.json(
+        { success: false, error: 'Número de WhatsApp inválido' },
+        { status: 400 }
+      );
+    }
+
     const validatedData = UpdateSettingsSchema.parse(body);
     
     const settings = await settingsService.updateSettings(validatedData);

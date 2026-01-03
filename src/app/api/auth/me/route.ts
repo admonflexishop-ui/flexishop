@@ -13,6 +13,12 @@ export async function GET() {
     const cookieStore = cookies();
     const sessionCookie = cookieStore.get('admin_session');
 
+    // Log para debug en desarrollo
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Verificando sesión - Cookie encontrada:', !!sessionCookie);
+      console.log('Valor de cookie:', sessionCookie?.value ? 'existe' : 'no existe');
+    }
+
     if (!sessionCookie || !sessionCookie.value) {
       return NextResponse.json(
         { success: false, error: 'No autenticado' },

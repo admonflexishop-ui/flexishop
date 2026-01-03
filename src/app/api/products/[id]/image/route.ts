@@ -53,6 +53,15 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Validar UUID del producto
+    const { isValidUUID } = await import('@/lib/security');
+    if (!isValidUUID(params.id)) {
+      return NextResponse.json(
+        { success: false, error: 'ID de producto inválido' },
+        { status: 400 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     
@@ -63,8 +72,20 @@ export async function POST(
       );
     }
     
-    // Validar tipo MIME
-    if (file.type !== 'image/png') {
+    // Validar que sea un File object válido
+    if (!(file instanceof File)) {
+      return NextResponse.json(
+        { success: false, error: 'Archivo inválido' },
+        { status: 400 }
+      );
+    }
+    
+    // Validar tipo MIME (verificar tanto el type como el nombre del archivo)
+    const validMimeTypes = ['image/png'];
+    const validExtensions = ['.png'];
+    const fileName = file.name.toLowerCase();
+    
+    if (!validMimeTypes.includes(file.type) || !validExtensions.some(ext => fileName.endsWith(ext))) {
       return NextResponse.json(
         { success: false, error: 'El archivo debe ser una imagen PNG' },
         { status: 400 }
@@ -75,6 +96,14 @@ export async function POST(
     if (file.size > 512000) {
       return NextResponse.json(
         { success: false, error: 'El archivo no puede exceder 500 KB' },
+        { status: 400 }
+      );
+    }
+
+    // Validar que el archivo no esté vacío
+    if (file.size === 0) {
+      return NextResponse.json(
+        { success: false, error: 'El archivo está vacío' },
         { status: 400 }
       );
     }

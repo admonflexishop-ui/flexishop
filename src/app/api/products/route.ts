@@ -30,7 +30,17 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    // Validar tamaño del body
+    const { validatePayloadSize } = await import('@/lib/security');
+    const bodyText = await request.text();
+    if (!validatePayloadSize(bodyText, 10240)) { // 10 KB máximo
+      return NextResponse.json(
+        { success: false, error: 'Payload demasiado grande' },
+        { status: 413 }
+      );
+    }
+
+    const body = JSON.parse(bodyText);
     const validatedData = CreateProductSchema.parse(body);
     
     const product = await productService.createProduct(validatedData);

@@ -70,10 +70,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [hasCheckedSession, refresh]);
 
   const login = async (email: string, password: string) => {
-    const userData = await api.login(email, password);
-    setUser(userData);
-    setIsLoading(false);
-    setHasCheckedSession(true);
+    try {
+      const userData = await api.login(email, password);
+      setUser(userData);
+      setIsLoading(false);
+      setHasCheckedSession(true);
+      
+      // Verificar inmediatamente después del login que la sesión esté activa
+      setTimeout(async () => {
+        try {
+          const verified = await api.getCurrentUser();
+          if (verified) {
+            setUser(verified);
+          }
+        } catch (error) {
+          console.error('Error al verificar sesión después del login:', error);
+        }
+      }, 100);
+    } catch (error) {
+      setIsLoading(false);
+      throw error;
+    }
   };
 
   const logout = async () => {

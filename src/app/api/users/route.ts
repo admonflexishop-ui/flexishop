@@ -23,7 +23,26 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    // Validar tamaño del body
+    const { validatePayloadSize, isValidEmail } = await import('@/lib/security');
+    const bodyText = await request.text();
+    if (!validatePayloadSize(bodyText, 10240)) {
+      return NextResponse.json(
+        { success: false, error: 'Payload demasiado grande' },
+        { status: 413 }
+      );
+    }
+
+    const body = JSON.parse(bodyText);
+    
+    // Validaciones adicionales antes de Zod
+    if (body.email && !isValidEmail(body.email)) {
+      return NextResponse.json(
+        { success: false, error: 'Formato de email inválido' },
+        { status: 400 }
+      );
+    }
+
     const validatedData = CreateUserSchema.parse(body);
     
     const user = await userService.createUser(validatedData);

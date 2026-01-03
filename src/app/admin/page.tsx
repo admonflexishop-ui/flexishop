@@ -12,7 +12,7 @@ export default function AdminPage() {
 
   const handleLogout = async () => {
     await logout();
-    router.push('/');
+    router.push('/products');
     router.refresh();
   };
 

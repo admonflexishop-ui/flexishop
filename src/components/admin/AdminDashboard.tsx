@@ -51,6 +51,25 @@ export function AdminDashboard({ onLogout }: { onLogout: () => Promise<void> }) 
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
 
   const accent = store?.accentColor || '#F59E0B';
+  
+  // Estado local para el formulario de configuración de tienda
+  const [storeForm, setStoreForm] = useState({
+    storeName: store?.storeName || '',
+    whatsappNumber: store?.whatsappNumber || '',
+    accentColor: store?.accentColor || '#F59E0B',
+  });
+  const [savingStore, setSavingStore] = useState(false);
+  
+  // Actualizar formulario cuando cambia el store
+  useEffect(() => {
+    if (store) {
+      setStoreForm({
+        storeName: store.storeName || '',
+        whatsappNumber: store.whatsappNumber || '',
+        accentColor: store.accentColor || '#F59E0B',
+      });
+    }
+  }, [store]);
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6">
@@ -292,57 +311,107 @@ export function AdminDashboard({ onLogout }: { onLogout: () => Promise<void> }) 
               <div className="card p-4">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-sm font-medium">Nombre de la tienda</label>
+                    <label className="mb-1 block text-sm font-medium">Nombre de la tienda *</label>
                     <input
                       className="input"
-                      defaultValue={store?.storeName || ''}
-                      onChange={(e) => updateStoreConfig({ storeName: e.target.value })}
+                      value={storeForm.storeName}
+                      onChange={(e) => setStoreForm({ ...storeForm, storeName: e.target.value })}
                       placeholder="Nombre"
+                      required
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium">WhatsApp</label>
+                    <label className="mb-1 block text-sm font-medium">WhatsApp *</label>
                     <input
                       className="input"
-                      defaultValue={store?.whatsappNumber || ''}
-                      onChange={(e) => updateStoreConfig({ whatsappNumber: e.target.value })}
+                      type="tel"
+                      value={storeForm.whatsappNumber}
+                      onChange={(e) => setStoreForm({ ...storeForm, whatsappNumber: e.target.value })}
                       placeholder="+52 897 128 2130"
+                      required
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium">Color de acento (hex)</label>
-                    <input
-                      className="input"
-                      defaultValue={accent}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setAccentLocal(v);
-                        updateStoreConfig({ accentColor: v });
-                      }}
-                      placeholder="#F59E0B"
-                    />
+                    <label className="mb-1 block text-sm font-medium">Color de acento *</label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={storeForm.accentColor}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setStoreForm({ ...storeForm, accentColor: v });
+                          // Vista previa en tiempo real
+                          setAccentLocal(v);
+                        }}
+                        className="h-10 w-20 cursor-pointer rounded border border-neutral-200"
+                        required
+                      />
+                      <input
+                        type="text"
+                        value={storeForm.accentColor}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setStoreForm({ ...storeForm, accentColor: v });
+                          // Vista previa en tiempo real
+                          setAccentLocal(v);
+                        }}
+                        placeholder="#F59E0B"
+                        className="input flex-1"
+                        pattern="^#[0-9A-Fa-f]{6}$"
+                        required
+                      />
+                    </div>
                     <div className="mt-2 flex items-center gap-2">
-                      <div className="h-6 w-6 rounded" style={{ backgroundColor: 'var(--accent-color)' }} />
+                      <div className="h-6 w-6 rounded border border-neutral-200" style={{ backgroundColor: storeForm.accentColor }} />
                       <div className="text-xs text-neutral-500">Vista previa en tiempo real</div>
                     </div>
                   </div>
 
-                    <div className="sm:col-span-2">
+                  <div className="sm:col-span-2">
                     <button
                       className="btn btn-accent"
-                      onClick={async () => {
+                      disabled={savingStore}
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        
+                        // Validar que todos los campos estén completos
+                        if (!storeForm.storeName.trim()) {
+                          alert('El nombre de la tienda es obligatorio');
+                          return;
+                        }
+                        if (!storeForm.whatsappNumber.trim()) {
+                          alert('El número de WhatsApp es obligatorio');
+                          return;
+                        }
+                        if (!storeForm.accentColor.trim() || !/^#[0-9A-Fa-f]{6}$/i.test(storeForm.accentColor)) {
+                          alert('El color de acento es obligatorio y debe estar en formato hexadecimal (#RRGGBB)');
+                          return;
+                        }
+                        
+                        setSavingStore(true);
                         try {
+                          // Guardar todos los cambios
+                          await updateStoreConfig({
+                            storeName: storeForm.storeName.trim(),
+                            whatsappNumber: storeForm.whatsappNumber.trim(),
+                            accentColor: storeForm.accentColor.trim(),
+                          });
+                          
+                          // Refrescar el estado global para que se refleje en todo el UI
                           await refreshStore();
+                          
                           alert('Guardado ✅');
                         } catch (error: any) {
                           alert(`Error al guardar: ${error.message}`);
+                        } finally {
+                          setSavingStore(false);
                         }
                       }}
                     >
-                      Confirmar cambios
+                      {savingStore ? 'Guardando...' : 'Guardar cambios'}
                     </button>
                     <div className="mt-2 text-xs text-neutral-500">
-                      Los cambios se guardan automáticamente en la base de datos.
+                      Todos los campos son obligatorios. Haz clic en &quot;Guardar cambios&quot; para aplicar las modificaciones.
                     </div>
                   </div>
                 </div>

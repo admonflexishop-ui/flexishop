@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 
@@ -19,6 +20,8 @@ export function LoginForm() {
 
     try {
       await login(email, password);
+      // Pequeño delay para asegurar que la cookie se establezca
+      await new Promise(resolve => setTimeout(resolve, 100));
       router.push('/admin');
       router.refresh();
     } catch (err: any) {
@@ -75,6 +78,15 @@ export function LoginForm() {
 
       <div className="text-xs text-neutral-500">
         Solo usuarios con rol <span className="font-semibold">admin</span> pueden acceder.
+      </div>
+      
+      <div className="pt-2 border-t border-neutral-200">
+        <Link
+          href="/products"
+          className="btn w-full text-center"
+        >
+          ← Volver a la tienda
+        </Link>
       </div>
     </div>
   );

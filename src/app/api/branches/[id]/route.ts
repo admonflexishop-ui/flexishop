@@ -10,6 +10,15 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Validar UUID
+    const { isValidUUID } = await import('@/lib/security');
+    if (!isValidUUID(params.id)) {
+      return NextResponse.json(
+        { success: false, error: 'ID de sucursal inválido' },
+        { status: 400 }
+      );
+    }
+
     const branch = await branchService.getBranchById(params.id);
     
     if (!branch) {
@@ -37,7 +46,25 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const body = await request.json();
+    // Validar UUID
+    const { isValidUUID, validatePayloadSize } = await import('@/lib/security');
+    if (!isValidUUID(params.id)) {
+      return NextResponse.json(
+        { success: false, error: 'ID de sucursal inválido' },
+        { status: 400 }
+      );
+    }
+
+    // Validar tamaño del body
+    const bodyText = await request.text();
+    if (!validatePayloadSize(bodyText, 10240)) {
+      return NextResponse.json(
+        { success: false, error: 'Payload demasiado grande' },
+        { status: 413 }
+      );
+    }
+
+    const body = JSON.parse(bodyText);
     const validatedData = UpdateBranchSchema.parse(body);
     
     const branch = await branchService.updateBranch(params.id, validatedData);
@@ -74,6 +101,15 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Validar UUID
+    const { isValidUUID } = await import('@/lib/security');
+    if (!isValidUUID(params.id)) {
+      return NextResponse.json(
+        { success: false, error: 'ID de sucursal inválido' },
+        { status: 400 }
+      );
+    }
+
     const deleted = await branchService.deleteBranch(params.id);
     
     if (!deleted) {
