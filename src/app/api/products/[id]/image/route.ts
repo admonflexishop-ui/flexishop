@@ -72,18 +72,28 @@ export async function POST(
     // Convertir File a Uint8Array
     const pngBytes = await imageService.fileToUint8Array(file);
     
+    console.log('Tamaño del archivo:', file.size, 'bytes');
+    console.log('Tamaño del Uint8Array:', pngBytes.length);
+    
     const imageData = CreateProductImageSchema.parse({
       product_id: params.id,
       png_bytes: pngBytes,
       bytes_size: file.size,
     });
     
+    console.log('Intentando guardar imagen para producto:', params.id);
     const image = await imageService.upsertProductImage(imageData);
+    console.log('Imagen guardada exitosamente');
+    
     return NextResponse.json({ success: true, data: image }, { status: 201 });
   } catch (error: any) {
     console.error('Error al guardar imagen:', error);
+    console.error('Tipo de error:', error.constructor.name);
+    console.error('Mensaje de error:', error.message);
+    console.error('Stack:', error.stack);
     
     if (error.name === 'ZodError') {
+      console.error('Errores de validación Zod:', error.errors);
       return NextResponse.json(
         { success: false, error: 'Datos inválidos', details: error.errors },
         { status: 400 }
@@ -97,8 +107,11 @@ export async function POST(
       );
     }
     
+    const errorMessage = error.message || error.toString() || 'Error desconocido al guardar imagen';
+    console.error('Error final:', errorMessage);
+    
     return NextResponse.json(
-      { success: false, error: error.message || 'Error al guardar imagen' },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

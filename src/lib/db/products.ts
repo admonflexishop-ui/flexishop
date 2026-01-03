@@ -1,6 +1,7 @@
 import { db } from '../db';
 import { ProductSchema, CreateProductSchema, UpdateProductSchema, type Product, type CreateProduct, type UpdateProduct } from '../validators';
 import { randomUUID } from 'crypto';
+import { normalizeDateTime } from './utils';
 
 /**
  * Obtiene todos los productos
@@ -19,8 +20,8 @@ export async function getAllProducts(): Promise<Product[]> {
       price_cents: (row.price_cents as number) ?? 0,
       stock: (row.stock as number) ?? 0,
       is_active: (row.is_active as number) ?? 1,
-      created_at: row.created_at as string,
-      updated_at: row.updated_at as string,
+      created_at: normalizeDateTime(row.created_at as string),
+      updated_at: normalizeDateTime(row.updated_at as string),
     };
     return ProductSchema.parse(product);
   });
@@ -43,8 +44,8 @@ export async function getActiveProducts(): Promise<Product[]> {
       price_cents: (row.price_cents as number) ?? 0,
       stock: (row.stock as number) ?? 0,
       is_active: (row.is_active as number) ?? 1,
-      created_at: row.created_at as string,
-      updated_at: row.updated_at as string,
+      created_at: normalizeDateTime(row.created_at as string),
+      updated_at: normalizeDateTime(row.updated_at as string),
     };
     return ProductSchema.parse(product);
   });
@@ -71,8 +72,8 @@ export async function getProductById(id: string): Promise<Product | null> {
     price_cents: (row.price_cents as number) ?? 0,
     stock: (row.stock as number) ?? 0,
     is_active: (row.is_active as number) ?? 1,
-    created_at: row.created_at as string,
-    updated_at: row.updated_at as string,
+    created_at: normalizeDateTime(row.created_at as string),
+    updated_at: normalizeDateTime(row.updated_at as string),
   };
 
   return ProductSchema.parse(product);

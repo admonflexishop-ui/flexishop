@@ -1,6 +1,8 @@
 import { db } from '../db';
 import { UserSchema, CreateUserSchema, UpdateUserSchema, type User, type CreateUser, type UpdateUser } from '../validators';
 import { randomUUID } from 'crypto';
+import bcrypt from 'bcryptjs';
+import { normalizeDateTime } from './utils';
 
 /**
  * Obtiene todos los usuarios (sin password por seguridad)
@@ -18,8 +20,8 @@ export async function getAllUsers(): Promise<User[]> {
       name: (row.name as string | null) ?? null,
       role: (row.role as 'admin' | 'editor') ?? 'admin',
       is_active: (row.is_active as number) ?? 1,
-      created_at: row.created_at as string,
-      updated_at: row.updated_at as string,
+      created_at: normalizeDateTime(row.created_at as string),
+      updated_at: normalizeDateTime(row.updated_at as string),
     };
     return UserSchema.parse(user);
   });
@@ -45,8 +47,8 @@ export async function getUserById(id: string): Promise<User | null> {
     name: (row.name as string | null) ?? null,
     role: (row.role as 'admin' | 'editor') ?? 'admin',
     is_active: (row.is_active as number) ?? 1,
-    created_at: row.created_at as string,
-    updated_at: row.updated_at as string,
+    created_at: normalizeDateTime(row.created_at as string),
+    updated_at: normalizeDateTime(row.updated_at as string),
   };
 
   return UserSchema.parse(user);
@@ -72,8 +74,8 @@ export async function getUserByEmail(email: string): Promise<User | null> {
     name: (row.name as string | null) ?? null,
     role: (row.role as 'admin' | 'editor') ?? 'admin',
     is_active: (row.is_active as number) ?? 1,
-    created_at: row.created_at as string,
-    updated_at: row.updated_at as string,
+    created_at: normalizeDateTime(row.created_at as string),
+    updated_at: normalizeDateTime(row.updated_at as string),
   };
 
   return UserSchema.parse(user);
@@ -111,6 +113,9 @@ export async function createUser(data: CreateUser): Promise<User> {
   const id = randomUUID();
   const now = new Date().toISOString();
 
+  // Hashear password con bcrypt
+  const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+
   await db.execute({
     sql: `
       INSERT INTO users (id, email, name, password, role, is_active, created_at, updated_at)
@@ -120,7 +125,7 @@ export async function createUser(data: CreateUser): Promise<User> {
       id,
       validatedData.email,
       validatedData.name ?? null,
-      validatedData.password,
+      hashedPassword,
       validatedData.role ?? 'admin',
       validatedData.is_active ?? 1,
       now,
@@ -164,8 +169,10 @@ export async function updateUser(id: string, data: UpdateUser): Promise<User> {
     values.push(validatedData.is_active);
   }
   if (validatedData.password !== undefined) {
+    // Hashear password con bcrypt al actualizar
+    const hashedPassword = await bcrypt.hash(validatedData.password, 10);
     fields.push('password = ?');
-    values.push(validatedData.password);
+    values.push(hashedPassword);
   }
 
   if (fields.length === 0) {

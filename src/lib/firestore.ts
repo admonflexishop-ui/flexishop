@@ -89,7 +89,7 @@ export async function listBranches(): Promise<Branch[]> {
     storeId: 'default',
     name: b.name,
     address: b.address || '',
-    hours: '', // El backend no tiene hours, dejar vacío
+    hours: b.schedule || '', // Mapear schedule del backend a hours del frontend
     phone: b.phone || '',
     location: undefined,
     createdAt: b.created_at,
@@ -102,6 +102,7 @@ export async function createBranch(data: Omit<Branch, 'id'>): Promise<Branch> {
     name: data.name,
     address: data.address || null,
     phone: data.phone || null,
+    schedule: data.hours || null, // Mapear hours del frontend a schedule del backend
     is_active: 1,
   });
   
@@ -110,7 +111,7 @@ export async function createBranch(data: Omit<Branch, 'id'>): Promise<Branch> {
     storeId: 'default',
     name: branch.name,
     address: branch.address || '',
-    hours: '',
+    hours: branch.schedule || '', // Mapear schedule del backend a hours del frontend
     phone: branch.phone || '',
     location: undefined,
     createdAt: branch.created_at,
@@ -124,6 +125,7 @@ export async function updateBranch(id: string, data: Partial<Omit<Branch, 'id'>>
   if (data.name !== undefined) updateData.name = data.name;
   if (data.address !== undefined) updateData.address = data.address || null;
   if (data.phone !== undefined) updateData.phone = data.phone || null;
+  if (data.hours !== undefined) updateData.schedule = data.hours || null; // Mapear hours del frontend a schedule del backend
   
   const branch = await api.updateBranch(id, updateData);
   
@@ -132,7 +134,7 @@ export async function updateBranch(id: string, data: Partial<Omit<Branch, 'id'>>
     storeId: 'default',
     name: branch.name,
     address: branch.address || '',
-    hours: '',
+    hours: branch.schedule || '', // Mapear schedule del backend a hours del frontend
     phone: branch.phone || '',
     location: undefined,
     createdAt: branch.created_at,

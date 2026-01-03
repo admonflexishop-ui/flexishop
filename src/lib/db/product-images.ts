@@ -1,5 +1,6 @@
 import { db } from '../db';
 import { ProductImageSchema, CreateProductImageSchema, type ProductImage, type CreateProductImage } from '../validators';
+import { normalizeDateTime } from './utils';
 
 /**
  * Obtiene la imagen de un producto
@@ -15,11 +16,25 @@ export async function getProductImage(productId: string): Promise<ProductImage |
   }
 
   const row = result.rows[0];
+  
+  // Convertir el BLOB a Uint8Array (libSQL puede retornar ArrayBuffer o Uint8Array)
+  let pngBytes: Uint8Array;
+  if (row.png_bytes instanceof Uint8Array) {
+    pngBytes = row.png_bytes;
+  } else if (row.png_bytes instanceof ArrayBuffer) {
+    pngBytes = new Uint8Array(row.png_bytes);
+  } else if (Buffer.isBuffer(row.png_bytes)) {
+    pngBytes = new Uint8Array(row.png_bytes);
+  } else {
+    // Convertir a Uint8Array desde cualquier formato
+    pngBytes = new Uint8Array(row.png_bytes as any);
+  }
+  
   const image = {
     product_id: row.product_id as string,
-    png_bytes: row.png_bytes as Uint8Array,
+    png_bytes: pngBytes,
     bytes_size: (row.bytes_size as number) ?? 0,
-    updated_at: row.updated_at as string,
+    updated_at: normalizeDateTime(row.updated_at as string),
   };
 
   return ProductImageSchema.parse(image);
@@ -44,25 +59,39 @@ export async function upsertProductImage(data: CreateProductImage): Promise<Prod
     throw new Error('La imagen no puede exceder 500 KB');
   }
 
-  // Convertir a Uint8Array si es Buffer
+  // Convertir a Uint8Array para libSQL (libSQL funciona mejor con Uint8Array para BLOBs)
   let pngBytes: Uint8Array;
   if (Buffer.isBuffer(validatedData.png_bytes)) {
     pngBytes = new Uint8Array(validatedData.png_bytes);
-  } else {
+  } else if (validatedData.png_bytes instanceof Uint8Array) {
     pngBytes = validatedData.png_bytes;
+  } else {
+    throw new Error('Formato de imagen no soportado');
   }
 
-  await db.execute({
-    sql: `
-      INSERT INTO product_image (product_id, png_bytes, bytes_size, updated_at)
-      VALUES (?, ?, ?, ?)
-      ON CONFLICT(product_id) DO UPDATE SET
-        png_bytes = excluded.png_bytes,
-        bytes_size = excluded.bytes_size,
-        updated_at = excluded.updated_at
-    `,
-    args: [validatedData.product_id, pngBytes, validatedData.bytes_size, now],
-  });
+  try {
+    console.log('Insertando imagen en BD - Product ID:', validatedData.product_id);
+    console.log('Tamaño del Buffer:', pngBytes.length, 'bytes');
+    console.log('Tipo del Buffer:', typeof pngBytes, Buffer.isBuffer(pngBytes));
+    
+    const result = await db.execute({
+      sql: `
+        INSERT INTO product_image (product_id, png_bytes, bytes_size, updated_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(product_id) DO UPDATE SET
+          png_bytes = excluded.png_bytes,
+          bytes_size = excluded.bytes_size,
+          updated_at = excluded.updated_at
+      `,
+      args: [validatedData.product_id, pngBytes, validatedData.bytes_size, now],
+    });
+    
+    console.log('Imagen insertada en BD. Rows affected:', result.rowsAffected);
+  } catch (dbError: any) {
+    console.error('Error en la base de datos al guardar imagen:', dbError);
+    console.error('Stack trace:', dbError.stack);
+    throw new Error(`Error al guardar imagen en la base de datos: ${dbError.message || dbError}`);
+  }
 
   const image = await getProductImage(validatedData.product_id);
   if (!image) {

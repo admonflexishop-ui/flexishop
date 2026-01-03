@@ -146,3 +146,69 @@ export async function updateSettings(data: any) {
   });
 }
 
+// ============
+// Auth
+// ============
+export async function login(email: string, password: string) {
+  const response = await fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    credentials: 'include', // Incluir cookies en la solicitud
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  const data: ApiResponse<any> = await response.json();
+
+  if (!data.success) {
+    throw new Error(data.error || 'Error al iniciar sesión');
+  }
+
+  if (!response.ok) {
+    throw new Error(data.error || `Error ${response.status}`);
+  }
+
+  return data.data;
+}
+
+export async function logout() {
+  const response = await fetch(`${API_BASE}/auth/logout`, {
+    method: 'POST',
+    credentials: 'include', // Incluir cookies en la solicitud
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data: ApiResponse<{ message: string }> = await response.json();
+
+  if (!data.success) {
+    throw new Error(data.error || 'Error al cerrar sesión');
+  }
+
+  return data.data;
+}
+
+export async function getCurrentUser() {
+  const response = await fetch(`${API_BASE}/auth/me`, {
+    method: 'GET',
+    credentials: 'include', // Incluir cookies en la solicitud
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data: ApiResponse<any> = await response.json();
+
+  if (!data.success) {
+    throw new Error(data.error || 'No autenticado');
+  }
+
+  if (!response.ok) {
+    throw new Error(data.error || `Error ${response.status}`);
+  }
+
+  return data.data;
+}
+

@@ -164,11 +164,17 @@ export function AdminDashboard({ onLogout }: { onLogout: () => Promise<void> }) 
                         // Subir imagen si se proporcionó
                         if (imageFile) {
                           try {
+                            console.log('Subiendo imagen para producto:', product.id);
+                            console.log('Archivo:', imageFile.name, imageFile.type, imageFile.size);
                             await api.uploadProductImage(product.id, imageFile);
+                            console.log('Imagen subida exitosamente');
                           } catch (error: any) {
                             console.error('Error al subir imagen:', error);
-                            alert(`Producto creado pero error al subir imagen: ${error.message}`);
+                            console.error('Error completo:', JSON.stringify(error, null, 2));
+                            alert(`Producto creado pero error al subir imagen: ${error.message || 'Error desconocido'}`);
                           }
+                        } else {
+                          console.log('No se proporcionó archivo de imagen');
                         }
                       } else {
                         await updateProduct(editingProduct.id, values);
@@ -491,6 +497,7 @@ function BranchForm({
   const [name, setName] = useState(initial.name);
   const [address, setAddress] = useState(initial.address);
   const [phone, setPhone] = useState(initial.phone);
+  const [hours, setHours] = useState(initial.hours);
   const [active, setActive] = useState(true);
   const storeId = initial.storeId;
 
@@ -503,7 +510,7 @@ function BranchForm({
           storeId,
           name,
           address,
-          hours: '',
+          hours,
           phone,
           location: undefined
         });
@@ -520,6 +527,15 @@ function BranchForm({
       <div>
         <label className="mb-1 block text-sm font-medium">Teléfono</label>
         <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+52 555 123 4567" />
+      </div>
+      <div>
+        <label className="mb-1 block text-sm font-medium">Horario</label>
+        <input 
+          className="input" 
+          value={hours} 
+          onChange={(e) => setHours(e.target.value)} 
+          placeholder="Lun-Vie: 9:00 - 19:00"
+        />
       </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />

@@ -47,6 +47,7 @@ export const BranchSchema = z.object({
   name: z.string().min(1),
   address: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
+  schedule: z.string().nullable().optional(),
   is_active: z.number().int().min(0).max(1).default(1),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
@@ -60,6 +61,7 @@ export const CreateBranchSchema = BranchSchema.omit({
   name: z.string().min(1),
   address: z.string().optional(),
   phone: z.string().optional(),
+  schedule: z.string().optional(),
   is_active: z.number().int().min(0).max(1).optional().default(1),
 });
 
@@ -70,9 +72,6 @@ export const UpdateBranchSchema = CreateBranchSchema.partial().extend({
 // ============
 // 3) Productos
 // ============
-// CurrencySchema solo para settings, no para products
-export const CurrencySchema = z.enum(['MXN', 'USD', 'EUR']);
-
 export const ProductSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1),
@@ -145,7 +144,6 @@ export const SettingsSchema = z.object({
   id: z.literal(1),
   store_name: z.string().min(1).default('FlexiShop'),
   default_whatsapp: z.string().nullable().optional(),
-  currency: CurrencySchema.default('MXN'),
   accent_color: AccentColorSchema.default('#000000'),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
@@ -158,7 +156,6 @@ export const UpdateSettingsSchema = SettingsSchema.omit({
 }).partial().extend({
   store_name: z.string().min(1).optional(),
   default_whatsapp: z.string().optional(),
-  currency: CurrencySchema.optional(),
   accent_color: AccentColorSchema.optional(),
 });
 
