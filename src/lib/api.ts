@@ -24,7 +24,24 @@ async function apiRequest<T>(
     ...options,
   });
 
-  const data: ApiResponse<T> = await response.json();
+  // Verificar si la respuesta tiene contenido antes de parsear JSON
+  const contentType = response.headers.get('content-type');
+  const text = await response.text();
+  
+  // Si no hay contenido o no es JSON, lanzar error con el status
+  if (!text || !contentType?.includes('application/json')) {
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}: ${response.statusText || 'Método no permitido'}`);
+    }
+    throw new Error('Respuesta vacía o inválida del servidor');
+  }
+
+  let data: ApiResponse<T>;
+  try {
+    data = JSON.parse(text);
+  } catch (error) {
+    throw new Error(`Error al parsear respuesta: ${text.substring(0, 100)}`);
+  }
 
   if (!data.success) {
     throw new Error(data.error || 'Error en la solicitud');

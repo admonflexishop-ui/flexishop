@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as settingsService from '@/lib/db/settings';
 import { UpdateSettingsSchema } from '@/lib/validators';
 
+export const dynamic = 'force-dynamic';
+
+/**
+ * OPTIONS /api/settings - Manejar preflight requests
+ */
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
+}
+
 /**
  * GET /api/settings - Obtiene la configuración
  */
@@ -31,9 +47,12 @@ export async function GET() {
  */
 export async function PUT(request: NextRequest) {
   try {
+    console.log('[PUT /api/settings] Iniciando actualización de configuración');
+    
     // Validar tamaño del body
     const { validatePayloadSize, isValidHexColor, isValidPhone } = await import('@/lib/security');
     const bodyText = await request.text();
+    console.log('[PUT /api/settings] Body recibido:', bodyText.substring(0, 200));
     if (!validatePayloadSize(bodyText, 10240)) {
       return NextResponse.json(
         { success: false, error: 'Payload demasiado grande' },
@@ -61,8 +80,10 @@ export async function PUT(request: NextRequest) {
     }
 
     const validatedData = UpdateSettingsSchema.parse(body);
+    console.log('[PUT /api/settings] Datos validados:', JSON.stringify(validatedData));
     
     const settings = await settingsService.updateSettings(validatedData);
+    console.log('[PUT /api/settings] Configuración actualizada exitosamente');
     return NextResponse.json({ success: true, data: settings });
   } catch (error: any) {
     console.error('Error al actualizar configuración:', error);
