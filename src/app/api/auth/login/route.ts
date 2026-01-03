@@ -3,6 +3,9 @@ import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
 import * as userService from '@/lib/db/users';
 
+// Forzar ruta dinámica (usa cookies)
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/auth/login - Inicia sesión
  */

@@ -19,8 +19,18 @@ export async function GET(
       );
     }
     
+    // Asegurar que siempre sea Uint8Array
+    const pngBytes: Uint8Array = image.png_bytes instanceof Uint8Array 
+      ? image.png_bytes 
+      : new Uint8Array(image.png_bytes as ArrayLike<number>);
+    
+    // Crear un nuevo ArrayBuffer para evitar problemas de tipos con SharedArrayBuffer
+    const buffer = new ArrayBuffer(pngBytes.length);
+    const view = new Uint8Array(buffer);
+    view.set(pngBytes);
+    
     // Retornar la imagen como PNG
-    return new NextResponse(image.png_bytes, {
+    return new NextResponse(buffer, {
       headers: {
         'Content-Type': 'image/png',
         'Content-Length': image.bytes_size.toString(),

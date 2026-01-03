@@ -33,10 +33,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const userData = await api.getCurrentUser();
       setUser(userData);
-      return true;
     } catch (error) {
       setUser(null);
-      return false;
     } finally {
       setIsLoading(false);
       setHasCheckedSession(true);

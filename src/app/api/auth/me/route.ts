@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import * as userService from '@/lib/db/users';
 
+// Forzar ruta dinámica (usa cookies)
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/auth/me - Obtiene el usuario actual autenticado
  */

@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
+// Forzar ruta dinámica (usa cookies)
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/auth/logout - Cierra sesión
  */
