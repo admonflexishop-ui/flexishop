@@ -10,7 +10,7 @@ import { CartDrawer } from '@/components/CartDrawer';
 const tabs = [
   { href: '/products', label: 'Productos' },
   { href: '/branches', label: 'Sucursales' },
-  { href: '/personalizar', label: 'Personalizar' }
+  //{ href: '/personalizar', label: 'Personalizar' }
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

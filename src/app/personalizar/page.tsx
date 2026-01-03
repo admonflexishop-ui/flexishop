@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { useStore } from '@/lib/store';
 import { updateStoreConfig } from '@/lib/firestore';
-import { useAuth } from '@/lib/auth';
 
 function isHex(hex: string) {
   return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(hex);
@@ -12,9 +11,9 @@ function isHex(hex: string) {
 
 export default function PersonalizarPage() {
   const { store, refresh, setAccentLocal } = useStore();
-  const { role, user } = useAuth();
   const [storeName, setStoreName] = useState('');
   const [accent, setAccent] = useState('#F59E0B');
+  const [whatsapp, setWhatsapp] = useState('');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -22,9 +21,8 @@ export default function PersonalizarPage() {
     if (!store) return;
     setStoreName(store.storeName);
     setAccent(store.accentColor);
+    setWhatsapp(store.whatsappNumber);
   }, [store]);
-
-  const canSave = useMemo(() => role === 'admin' && !!user, [role, user]);
 
   useEffect(() => {
     if (isHex(accent)) setAccentLocal(accent);
@@ -32,10 +30,6 @@ export default function PersonalizarPage() {
 
   const onSave = async () => {
     setMsg(null);
-    if (!canSave) {
-      setMsg('Solo el admin puede guardar cambios.');
-      return;
-    }
     if (!storeName.trim()) {
       setMsg('El nombre de tienda es obligatorio.');
       return;
@@ -46,7 +40,11 @@ export default function PersonalizarPage() {
     }
     setSaving(true);
     try {
-      await updateStoreConfig({ storeName: storeName.trim(), accentColor: accent });
+      await updateStoreConfig({ 
+        storeName: storeName.trim(), 
+        accentColor: accent,
+        whatsappNumber: whatsapp.trim()
+      });
       await refresh();
       setMsg('Guardado ✅');
     } catch (e: any) {
@@ -85,17 +83,21 @@ export default function PersonalizarPage() {
               </div>
             </label>
 
+            <label className="grid gap-1">
+              <span className="text-xs font-medium text-neutral-700">Número de WhatsApp</span>
+              <input 
+                className="input" 
+                value={whatsapp} 
+                onChange={(e) => setWhatsapp(e.target.value)} 
+                placeholder="+52 555 123 4567"
+              />
+            </label>
+
             <button className="btn btn-accent w-fit" onClick={onSave} disabled={saving}>
               {saving ? 'Guardando...' : 'Guardar'}
             </button>
 
             {msg && <div className="text-sm text-neutral-700">{msg}</div>}
-            {!canSave && (
-              <div className="text-xs text-neutral-500">
-                Para guardar: inicia sesión en <a className="underline" href="/admin">Admin</a> con un usuario con rol
-                <span className="font-semibold"> admin</span>.
-              </div>
-            )}
           </div>
         </div>
       </div>

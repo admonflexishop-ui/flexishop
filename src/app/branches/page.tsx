@@ -41,12 +41,9 @@ export default function BranchesPage() {
           {branches.map((b) => (
             <div key={b.id} className="card p-4">
               <div className="text-base font-semibold">{b.name}</div>
-              <div className="mt-1 text-sm text-neutral-700">{b.address}</div>
-              <div className="mt-1 text-sm text-neutral-700">Horario: {b.hours}</div>
-              <div className="mt-1 text-sm text-neutral-700">Tel: {b.phone}</div>
-              <div className="mt-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs text-neutral-500">
-                Mapa: (real en versión final)
-              </div>
+              {b.address && <div className="mt-1 text-sm text-neutral-700">{b.address}</div>}
+              {b.phone && <div className="mt-1 text-sm text-neutral-700">Tel: {b.phone}</div>}
+              {b.hours && <div className="mt-1 text-sm text-neutral-700">Horario: {b.hours}</div>}
             </div>
           ))}
         </div>

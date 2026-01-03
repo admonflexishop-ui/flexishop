@@ -1,51 +1,54 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { StoreConfig } from '@/types';
-import { getStoreConfig } from '@/lib/firestore';
+import { getStoreConfig } from './firestore';
 
-type StoreState = {
+type StoreContextType = {
   store: StoreConfig | null;
-  loading: boolean;
   refresh: () => Promise<void>;
-  setAccentLocal: (hex: string) => void; // for live preview
+  setAccentLocal: (color: string) => void;
 };
 
-const StoreContext = createContext<StoreState | null>(null);
+const StoreContext = createContext<StoreContextType | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [store, setStore] = useState<StoreConfig | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [accentColor, setAccentColor] = useState('#F59E0B');
 
-  const applyAccent = (hex: string) => {
-    if (typeof document !== 'undefined') {
-      document.documentElement.style.setProperty('--accent-color', hex);
+  const refresh = async () => {
+    try {
+      const config = await getStoreConfig();
+      setStore(config);
+      setAccentColor(config.accentColor);
+      // Actualizar CSS variable
+      document.documentElement.style.setProperty('--accent-color', config.accentColor);
+    } catch (error) {
+      console.error('Error loading store config:', error);
     }
   };
 
-  const refresh = async () => {
-    setLoading(true);
-    const cfg = await getStoreConfig();
-    setStore(cfg);
-    applyAccent(cfg.accentColor);
-    setLoading(false);
+  const setAccentLocal = (color: string) => {
+    setAccentColor(color);
+    document.documentElement.style.setProperty('--accent-color', color);
   };
 
   useEffect(() => {
-    refresh().catch(() => setLoading(false));
+    refresh();
   }, []);
 
-  const value = useMemo<StoreState>(
-    () => ({
-      store,
-      loading,
-      refresh,
-      setAccentLocal: (hex) => applyAccent(hex)
-    }),
-    [store, loading]
-  );
+  // Actualizar CSS variable cuando cambia el store
+  useEffect(() => {
+    if (store?.accentColor) {
+      document.documentElement.style.setProperty('--accent-color', store.accentColor);
+    }
+  }, [store?.accentColor]);
 
-  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
+  return (
+    <StoreContext.Provider value={{ store, refresh, setAccentLocal }}>
+      {children}
+    </StoreContext.Provider>
+  );
 }
 
 export function useStore() {
@@ -53,3 +56,4 @@ export function useStore() {
   if (!ctx) throw new Error('useStore must be used within StoreProvider');
   return ctx;
 }
+

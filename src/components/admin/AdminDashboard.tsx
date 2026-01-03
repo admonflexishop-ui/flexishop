@@ -5,6 +5,7 @@ import type { Branch, Product } from '@/types';
 import { createBranch, createProduct, deleteBranch, deleteProduct, listBranches, listProducts, updateBranch, updateProduct } from '@/lib/firestore';
 import { useStore } from '@/lib/store';
 import { updateStoreConfig } from '@/lib/firestore';
+import * as api from '@/lib/api';
 
 const tabs = [
   { id: 'products', label: 'Productos' },
@@ -59,7 +60,6 @@ export function AdminDashboard({ onLogout }: { onLogout: () => Promise<void> }) 
           <div className="text-sm text-neutral-500">CRUD de productos, sucursales y configuración.</div>
         </div>
         <div className="flex gap-2">
-        <button className="btn" onClick={reload}>Recargar</button>
         <button className="btn" onClick={onLogout}>Salir</button>
       </div>
       </div>
@@ -128,8 +128,12 @@ export function AdminDashboard({ onLogout }: { onLogout: () => Promise<void> }) 
                           className="btn"
                           onClick={async () => {
                             if (!confirm('¿Eliminar este producto?')) return;
-                            await deleteProduct(p.id);
-                            await reload();
+                            try {
+                              await deleteProduct(p.id);
+                              await reload();
+                            } catch (error: any) {
+                              alert(`Error al eliminar: ${error.message}`);
+                            }
                           }}
                         >
                           Eliminar
@@ -146,9 +150,9 @@ export function AdminDashboard({ onLogout }: { onLogout: () => Promise<void> }) 
                   <ProductForm
                     initial={editingProduct}
                     onCancel={() => setEditingProduct(null)}
-                    onSave={async (values) => {
+                    onSave={async (values, imageFile) => {
                       if (editingProduct.id === 'new') {
-                        await createProduct({
+                        const product = await createProduct({
                           storeId: values.storeId,
                           name: values.name,
                           price: values.price,
@@ -157,8 +161,26 @@ export function AdminDashboard({ onLogout }: { onLogout: () => Promise<void> }) 
                           imageUrl: values.imageUrl,
                           active: values.active
                         });
+                        // Subir imagen si se proporcionó
+                        if (imageFile) {
+                          try {
+                            await api.uploadProductImage(product.id, imageFile);
+                          } catch (error: any) {
+                            console.error('Error al subir imagen:', error);
+                            alert(`Producto creado pero error al subir imagen: ${error.message}`);
+                          }
+                        }
                       } else {
                         await updateProduct(editingProduct.id, values);
+                        // Subir nueva imagen si se proporcionó
+                        if (imageFile) {
+                          try {
+                            await api.uploadProductImage(editingProduct.id, imageFile);
+                          } catch (error: any) {
+                            console.error('Error al subir imagen:', error);
+                            alert(`Producto actualizado pero error al subir imagen: ${error.message}`);
+                          }
+                        }
                       }
                       setEditingProduct(null);
                       await reload();
@@ -209,8 +231,12 @@ export function AdminDashboard({ onLogout }: { onLogout: () => Promise<void> }) 
                           className="btn"
                           onClick={async () => {
                             if (!confirm('¿Eliminar esta sucursal?')) return;
-                            await deleteBranch(b.id);
-                            await reload();
+                            try {
+                              await deleteBranch(b.id);
+                              await reload();
+                            } catch (error: any) {
+                              alert(`Error al eliminar: ${error.message}`);
+                            }
                           }}
                         >
                           Eliminar
@@ -228,20 +254,24 @@ export function AdminDashboard({ onLogout }: { onLogout: () => Promise<void> }) 
                     initial={editingBranch}
                     onCancel={() => setEditingBranch(null)}
                     onSave={async (values) => {
-                      if (editingBranch.id === 'new') {
-                        await createBranch({
-                          storeId: values.storeId,
-                          name: values.name,
-                          address: values.address,
-                          hours: values.hours,
-                          phone: values.phone,
-                          location: values.location
-                        });
-                      } else {
-                        await updateBranch(editingBranch.id, values);
+                      try {
+                        if (editingBranch.id === 'new') {
+                          await createBranch({
+                            storeId: values.storeId,
+                            name: values.name,
+                            address: values.address,
+                            hours: values.hours,
+                            phone: values.phone,
+                            location: values.location
+                          });
+                        } else {
+                          await updateBranch(editingBranch.id, values);
+                        }
+                        setEditingBranch(null);
+                        await reload();
+                      } catch (error: any) {
+                        alert(`Error: ${error.message}`);
                       }
-                      setEditingBranch(null);
-                      await reload();
                     }}
                   />
                 </Modal>
@@ -291,18 +321,22 @@ export function AdminDashboard({ onLogout }: { onLogout: () => Promise<void> }) 
                     </div>
                   </div>
 
-                  <div className="sm:col-span-2">
+                    <div className="sm:col-span-2">
                     <button
                       className="btn btn-accent"
                       onClick={async () => {
-                        await refreshStore();
-                        alert('Guardado');
+                        try {
+                          await refreshStore();
+                          alert('Guardado ✅');
+                        } catch (error: any) {
+                          alert(`Error al guardar: ${error.message}`);
+                        }
                       }}
                     >
                       Confirmar cambios
                     </button>
                     <div className="mt-2 text-xs text-neutral-500">
-                      Nota: Firestore aplica control real de permisos con reglas (escritura solo admin).
+                      Los cambios se guardan automáticamente en la base de datos.
                     </div>
                   </div>
                 </div>
@@ -338,15 +372,16 @@ function ProductForm({
   onCancel
 }: {
   initial: Product;
-  onSave: (p: Omit<Product, 'id'>) => Promise<void>;
+  onSave: (p: Omit<Product, 'id'>, imageFile?: File) => Promise<void>;
   onCancel: () => void;
 }) {
   const [name, setName] = useState(initial.name);
   const [price, setPrice] = useState(initial.price);
   const [stock, setStock] = useState(initial.stock);
   const [description, setDescription] = useState(initial.description);
-  const [imageUrl, setImageUrl] = useState(initial.imageUrl);
   const [active, setActive] = useState(initial.active);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   const storeId = initial.storeId;
 
   return (
@@ -354,7 +389,12 @@ function ProductForm({
       className="space-y-3"
       onSubmit={async (e) => {
         e.preventDefault();
-        await onSave({ storeId, name, price: Number(price), stock: Number(stock), description, imageUrl, active });
+        setUploading(true);
+        try {
+          await onSave({ storeId, name, price: Number(price), stock: Number(stock), description, imageUrl: initial.imageUrl, active }, imageFile || undefined);
+        } finally {
+          setUploading(false);
+        }
       }}
     >
       <div>
@@ -363,11 +403,12 @@ function ProductForm({
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium">Precio</label>
+          <label className="mb-1 block text-sm font-medium">Precio (MXN)</label>
           <input
             className="input"
             type="number"
             step="0.01"
+            min="0"
             value={price}
             onChange={(e) => setPrice(Number(e.target.value))}
             required
@@ -378,6 +419,7 @@ function ProductForm({
           <input
             className="input"
             type="number"
+            min="0"
             value={stock}
             onChange={(e) => setStock(Number(e.target.value))}
             required
@@ -389,20 +431,48 @@ function ProductForm({
         <textarea className="input" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
       </div>
       <div>
-        <label className="mb-1 block text-sm font-medium">Image URL (Storage)</label>
-        <input className="input" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." />
-        <div className="mt-1 text-xs text-neutral-500">Puedes subir a Firebase Storage y pegar la URL pública.</div>
+        <label className="mb-1 block text-sm font-medium">Imagen (PNG, máximo 500 KB)</label>
+        <input
+          className="input"
+          type="file"
+          accept="image/png"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              if (file.type !== 'image/png') {
+                alert('Solo se permiten archivos PNG');
+                return;
+              }
+              if (file.size > 512000) {
+                alert('El archivo no puede exceder 500 KB');
+                return;
+              }
+              setImageFile(file);
+            }
+          }}
+        />
+        {imageFile && (
+          <div className="mt-1 text-xs text-green-600">
+            Archivo seleccionado: {imageFile.name} ({(imageFile.size / 1024).toFixed(2)} KB)
+          </div>
+        )}
+        {initial.imageUrl && !imageFile && (
+          <div className="mt-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={initial.imageUrl} alt={initial.name} className="h-20 w-20 rounded object-cover" />
+          </div>
+        )}
       </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
         Activo
       </label>
       <div className="flex gap-2 pt-2">
-        <button type="button" className="btn w-full" onClick={onCancel}>
+        <button type="button" className="btn w-full" onClick={onCancel} disabled={uploading}>
           Cancelar
         </button>
-        <button type="submit" className="btn btn-accent w-full">
-          Guardar
+        <button type="submit" className="btn btn-accent w-full" disabled={uploading}>
+          {uploading ? 'Guardando...' : 'Guardar'}
         </button>
       </div>
     </form>
@@ -420,10 +490,8 @@ function BranchForm({
 }) {
   const [name, setName] = useState(initial.name);
   const [address, setAddress] = useState(initial.address);
-  const [hours, setHours] = useState(initial.hours);
   const [phone, setPhone] = useState(initial.phone);
-  const [lat, setLat] = useState(initial.location?.lat ?? 0);
-  const [lng, setLng] = useState(initial.location?.lng ?? 0);
+  const [active, setActive] = useState(true);
   const storeId = initial.storeId;
 
   return (
@@ -435,9 +503,9 @@ function BranchForm({
           storeId,
           name,
           address,
-          hours,
+          hours: '',
           phone,
-          location: { lat: Number(lat), lng: Number(lng) }
+          location: undefined
         });
       }}
     >
@@ -447,28 +515,16 @@ function BranchForm({
       </div>
       <div>
         <label className="mb-1 block text-sm font-medium">Dirección</label>
-        <input className="input" value={address} onChange={(e) => setAddress(e.target.value)} required />
+        <input className="input" value={address} onChange={(e) => setAddress(e.target.value)} />
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-sm font-medium">Horario</label>
-          <input className="input" value={hours} onChange={(e) => setHours(e.target.value)} placeholder="Lun-Vie 9-6" />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium">Teléfono</label>
-          <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(xxx)" />
-        </div>
+      <div>
+        <label className="mb-1 block text-sm font-medium">Teléfono</label>
+        <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+52 555 123 4567" />
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-sm font-medium">Lat</label>
-          <input className="input" type="number" step="0.000001" value={lat} onChange={(e) => setLat(Number(e.target.value))} />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium">Lng</label>
-          <input className="input" type="number" step="0.000001" value={lng} onChange={(e) => setLng(Number(e.target.value))} />
-        </div>
-      </div>
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
+        Activa
+      </label>
       <div className="flex gap-2 pt-2">
         <button type="button" className="btn w-full" onClick={onCancel}>
           Cancelar
