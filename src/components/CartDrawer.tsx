@@ -18,9 +18,17 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     ['Hola, quiero comprar:', ...items.map((it) => `• ${it.product.name} x${it.qty} = ${money(it.product.price * it.qty)}`), '', `Total: ${money(total)}`].join('\n')
   );
 
-  const wa = store?.whatsappNumber || '+52 897 128 2130';
-  const waDigits = wa.replace(/[^0-9]/g, '');
-  const waLink = `https://wa.me/${waDigits}?text=${message}`;
+  // Usar el número de WhatsApp de los settings (default_whatsapp)
+  // El store.whatsappNumber viene de default_whatsapp en la base de datos
+  const wa = store?.whatsappNumber;
+  
+  // Validar que existe y tiene contenido válido (mínimo 10 dígitos, máximo 20 caracteres)
+  const digits = wa ? wa.replace(/[^0-9]/g, '') : '';
+  const hasWhatsApp = wa && wa.trim() && wa.length <= 20 && digits.length >= 10;
+  
+  // Generar el link de WhatsApp solo si existe el número válido
+  const waDigits = hasWhatsApp ? wa!.replace(/[^0-9]/g, '') : '';
+  const waLink = hasWhatsApp ? `https://wa.me/${waDigits}?text=${message}` : '#';
 
   return (
     <div className="fixed inset-0 z-50">
@@ -84,9 +92,11 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
               <div className="flex gap-2 pt-2">
                 <button className="btn w-full" onClick={clear}>Vaciar carrito</button>
                 <button 
-                  className="btn-accent w-full" 
+                  className={`w-full ${hasWhatsApp ? 'btn-accent' : 'btn opacity-50 cursor-not-allowed'}`}
+                  disabled={!hasWhatsApp || items.length === 0}
                   onClick={() => {
-                    // Abrir WhatsApp
+                    if (!hasWhatsApp) return;
+                    // Abrir WhatsApp usando el número de default_whatsapp de los settings
                     window.open(waLink, '_blank', 'noopener,noreferrer');
                     // Limpiar el carrito
                     clear();
@@ -98,9 +108,15 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 </button>
               </div>
 
-              <div className="pt-2 text-xs text-neutral-500">
-                El mensaje de WhatsApp incluye lista de productos, cantidades y total.
-              </div>
+              {!hasWhatsApp ? (
+                <div className="pt-2 text-xs text-yellow-600">
+                  ⚠️ Por favor configura el número de WhatsApp en la configuración de la tienda para poder realizar pedidos.
+                </div>
+              ) : (
+                <div className="pt-2 text-xs text-neutral-500">
+                  El mensaje de WhatsApp incluye lista de productos, cantidades y total.
+                </div>
+              )}
             </div>
           )}
         </div>

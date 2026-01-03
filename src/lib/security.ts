@@ -30,12 +30,19 @@ export function isValidHexColor(color: string): boolean {
 }
 
 /**
- * Valida formato de teléfono (básico)
+ * Valida formato de teléfono - máximo 20 caracteres
  */
 export function isValidPhone(phone: string): boolean {
-  // Permitir números, espacios, +, -, ( y )
-  const phoneRegex = /^[\d\s\+\-\(\)]{10,20}$/;
-  return phoneRegex.test(phone);
+  if (!phone || typeof phone !== 'string') return false;
+  
+  // Validar longitud máxima de 20 caracteres
+  if (phone.length > 20) return false;
+  
+  // Contar solo los dígitos (0-9)
+  const digits = phone.replace(/\D/g, '');
+  
+  // Debe tener al menos 10 dígitos (número mínimo válido)
+  return digits.length >= 10;
 }
 
 /**

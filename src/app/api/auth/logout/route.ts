@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { SESSION_COOKIE_NAME } from '@/lib/session-constants';
 
 // Forzar ruta dinámica (usa cookies)
 export const dynamic = 'force-dynamic';
@@ -12,7 +13,7 @@ export async function POST() {
     const cookieStore = cookies();
     
     // Eliminar la cookie estableciendo una fecha de expiración en el pasado
-    cookieStore.set('admin_session', '', {
+    cookieStore.set(SESSION_COOKIE_NAME, '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

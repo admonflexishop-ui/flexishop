@@ -86,11 +86,21 @@ export default function PersonalizarPage() {
             <label className="grid gap-1">
               <span className="text-xs font-medium text-neutral-700">Número de WhatsApp</span>
               <input 
-                className="input" 
+                className="input"
+                type="tel"
                 value={whatsapp} 
-                onChange={(e) => setWhatsapp(e.target.value)} 
+                onChange={(e) => {
+                  // Solo permitir números y algunos caracteres de formato
+                  const value = e.target.value.replace(/[^\d\+\-\(\)\s]/g, '');
+                  // Limitar a 20 caracteres máximo
+                  if (value.length <= 20) {
+                    setWhatsapp(value);
+                  }
+                }} 
                 placeholder="+52 555 123 4567"
+                maxLength={20}
               />
+              <span className="text-xs text-neutral-500">Máximo 20 caracteres</span>
             </label>
 
             <button className="btn btn-accent w-fit" onClick={onSave} disabled={saving}>

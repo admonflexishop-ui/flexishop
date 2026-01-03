@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import * as userService from '@/lib/db/users';
 import { isValidEmail, validatePayloadSize, containsSqlInjection } from '@/lib/security';
 import { resetLoginRateLimit } from '@/middleware';
+import { SESSION_COOKIE_NAME } from '@/lib/session-constants';
 
 // Forzar ruta dinámica (usa cookies)
 export const dynamic = 'force-dynamic';
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
       path: '/',
     };
 
-    cookieStore.set('admin_session', JSON.stringify(sessionData), cookieOptions);
+    cookieStore.set(SESSION_COOKIE_NAME, JSON.stringify(sessionData), cookieOptions);
     
     // Resetear rate limit después de login exitoso
     resetLoginRateLimit(request);
@@ -138,7 +139,7 @@ export async function POST(request: NextRequest) {
     // Log para debug en desarrollo
     if (process.env.NODE_ENV === 'development') {
       console.log('Cookie configurada:', {
-        name: 'admin_session',
+        name: SESSION_COOKIE_NAME,
         secure: cookieOptions.secure,
         sameSite: cookieOptions.sameSite,
         maxAge: cookieOptions.maxAge,

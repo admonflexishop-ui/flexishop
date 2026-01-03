@@ -6,6 +6,7 @@ import React, { useMemo, useState } from 'react';
 import { useStore } from '@/lib/store';
 import { useCart } from '@/lib/cart';
 import { CartDrawer } from '@/components/CartDrawer';
+import { StoreIcon } from '@/components/StoreIcon';
 
 const tabs = [
   { href: '/products', label: 'Productos' },
@@ -26,14 +27,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-10 border-b border-neutral-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-4">
           <div className="flex items-center gap-3">
-            <div
-              className="h-8 w-8 rounded-lg"
-              style={{ backgroundColor: 'var(--accent-color)' }}
-              aria-hidden
+            <StoreIcon 
+              accentColor={store?.accentColor || '#F59E0B'} 
+              size={32}
             />
             <div className="leading-tight">
               <div className="text-lg font-semibold">{store?.storeName ?? 'FlexiShop'}</div>
-              <div className="text-xs text-neutral-500">Tienda lista para WhatsApp</div>
             </div>
           </div>
           <button className="btn btn-accent" onClick={() => setOpenCart(true)}>

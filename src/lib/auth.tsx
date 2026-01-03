@@ -1,118 +1,56 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import * as api from './api';
-
-type UserRole = 'admin' | 'customer' | 'editor';
-
-type User = {
-  id: string;
-  email: string;
-  name?: string | null;
-  role: UserRole;
-};
+import { SESSION_STORAGE_KEY } from './session-constants';
 
 type AuthContextType = {
-  user: User | null;
-  role: UserRole;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  refresh: () => Promise<void>;
+  logout: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [hasCheckedSession, setHasCheckedSession] = useState(false);
 
-  const refresh = useCallback(async () => {
-    try {
-      const userData = await api.getCurrentUser();
-      setUser(userData);
-    } catch (error) {
-      setUser(null);
-    } finally {
+  // Verificar sessionStorage al cargar
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const logeo = sessionStorage.getItem(SESSION_STORAGE_KEY);
+      setIsAuthenticated(logeo === 'true');
       setIsLoading(false);
-      setHasCheckedSession(true);
     }
   }, []);
 
-  useEffect(() => {
-    // Verificar sesión al cargar la aplicación
-    refresh();
-  }, [refresh]);
-
-  useEffect(() => {
-    // Verificar sesión periódicamente (cada 5 minutos) solo si hay usuario
-    if (!user) return;
-
-    const interval = setInterval(() => {
-      refresh();
-    }, 5 * 60 * 1000); // 5 minutos
-
-    return () => clearInterval(interval);
-  }, [user, refresh]);
-
-  // También verificar sesión cuando la ventana recupera el foco
-  useEffect(() => {
-    const handleFocus = () => {
-      if (hasCheckedSession) {
-        refresh();
-      }
-    };
-
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [hasCheckedSession, refresh]);
-
   const login = async (email: string, password: string) => {
-    try {
-      const userData = await api.login(email, password);
-      setUser(userData);
-      setIsLoading(false);
-      setHasCheckedSession(true);
-      
-      // Verificar inmediatamente después del login que la sesión esté activa
-      setTimeout(async () => {
-        try {
-          const verified = await api.getCurrentUser();
-          if (verified) {
-            setUser(verified);
-          }
-        } catch (error) {
-          console.error('Error al verificar sesión después del login:', error);
-        }
-      }, 100);
-    } catch (error) {
-      setIsLoading(false);
-      throw error;
+    // El login ya valida credenciales y rol en el backend
+    // Si llega aquí sin error, significa que es válido
+    await api.login(email, password);
+    
+    // Guardar en sessionStorage
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(SESSION_STORAGE_KEY, 'true');
+      setIsAuthenticated(true);
     }
   };
 
-  const logout = async () => {
-    try {
-      await api.logout();
-    } catch (error) {
-      console.error('Error al cerrar sesión:', error);
-    } finally {
-      setUser(null);
-      setIsLoading(false);
-      setHasCheckedSession(false);
+  const logout = () => {
+    // Limpiar sessionStorage
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      setIsAuthenticated(false);
     }
   };
 
   const value: AuthContextType = {
-    user,
-    role: user?.role || 'customer',
-    isAuthenticated: !!user && user.role === 'admin',
+    isAuthenticated,
     isLoading,
     login,
     logout,
-    refresh,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

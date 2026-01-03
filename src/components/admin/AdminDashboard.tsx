@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import type { Branch, Product } from '@/types';
 import { createBranch, createProduct, deleteBranch, deleteProduct, listBranches, listProducts, updateBranch, updateProduct } from '@/lib/firestore';
 import { useStore } from '@/lib/store';
@@ -79,8 +80,11 @@ export function AdminDashboard({ onLogout }: { onLogout: () => Promise<void> }) 
           <div className="text-sm text-neutral-500">CRUD de productos, sucursales y configuración.</div>
         </div>
         <div className="flex gap-2">
-        <button className="btn" onClick={onLogout}>Salir</button>
-      </div>
+          <Link href="/products" className="btn">
+            Ver Tienda
+          </Link>
+          <button className="btn" onClick={onLogout}>Salir</button>
+        </div>
       </div>
 
       <div className="mt-4 flex gap-2">
@@ -326,10 +330,21 @@ export function AdminDashboard({ onLogout }: { onLogout: () => Promise<void> }) 
                       className="input"
                       type="tel"
                       value={storeForm.whatsappNumber}
-                      onChange={(e) => setStoreForm({ ...storeForm, whatsappNumber: e.target.value })}
-                      placeholder="+52 897 128 2130"
+                      onChange={(e) => {
+                        // Solo permitir números y algunos caracteres de formato
+                        const value = e.target.value.replace(/[^\d\+\-\(\)\s]/g, '');
+                        // Limitar a 20 caracteres máximo
+                        if (value.length <= 20) {
+                          setStoreForm({ ...storeForm, whatsappNumber: value });
+                        }
+                      }}
+                      placeholder="+52 555 123 4567"
                       required
+                      maxLength={20}
                     />
+                    <div className="mt-1 text-xs text-neutral-500">
+                      Máximo 20 caracteres
+                    </div>
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-medium">Color de acento *</label>
@@ -595,7 +610,24 @@ function BranchForm({
       </div>
       <div>
         <label className="mb-1 block text-sm font-medium">Teléfono</label>
-        <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+52 555 123 4567" />
+        <input 
+          className="input" 
+          type="tel"
+          value={phone} 
+          onChange={(e) => {
+            // Solo permitir números y algunos caracteres de formato
+            const value = e.target.value.replace(/[^\d\+\-\(\)\s]/g, '');
+            // Limitar a 20 caracteres máximo
+            if (value.length <= 20) {
+              setPhone(value);
+            }
+          }} 
+          placeholder="+52 555 123 4567"
+          maxLength={20}
+        />
+        <div className="mt-1 text-xs text-neutral-500">
+          Máximo 20 caracteres
+        </div>
       </div>
       <div>
         <label className="mb-1 block text-sm font-medium">Horario</label>

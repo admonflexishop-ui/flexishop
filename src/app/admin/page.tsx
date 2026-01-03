@@ -10,8 +10,8 @@ export default function AdminPage() {
   const { isAuthenticated, isLoading, logout } = useAuth();
   const router = useRouter();
 
-  const handleLogout = async () => {
-    await logout();
+  const handleLogout = () => {
+    logout();
     router.push('/products');
     router.refresh();
   };

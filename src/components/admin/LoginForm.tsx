@@ -20,8 +20,6 @@ export function LoginForm() {
 
     try {
       await login(email, password);
-      // Pequeño delay para asegurar que la cookie se establezca
-      await new Promise(resolve => setTimeout(resolve, 100));
       router.push('/admin');
       router.refresh();
     } catch (err: any) {

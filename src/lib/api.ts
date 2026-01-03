@@ -16,6 +16,7 @@ async function apiRequest<T>(
   options?: RequestInit
 ): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
+    credentials: 'include', // Siempre incluir cookies
     headers: {
       'Content-Type': 'application/json',
       ...options?.headers,
@@ -42,6 +43,7 @@ async function apiFormDataRequest<T>(
 ): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     method: 'POST',
+    credentials: 'include', // Siempre incluir cookies
     body: formData,
   });
 
@@ -152,7 +154,7 @@ export async function updateSettings(data: any) {
 export async function login(email: string, password: string) {
   const response = await fetch(`${API_BASE}/auth/login`, {
     method: 'POST',
-    credentials: 'include', // Incluir cookies en la solicitud
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
     },
@@ -172,43 +174,6 @@ export async function login(email: string, password: string) {
   return data.data;
 }
 
-export async function logout() {
-  const response = await fetch(`${API_BASE}/auth/logout`, {
-    method: 'POST',
-    credentials: 'include', // Incluir cookies en la solicitud
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-
-  const data: ApiResponse<{ message: string }> = await response.json();
-
-  if (!data.success) {
-    throw new Error(data.error || 'Error al cerrar sesión');
-  }
-
-  return data.data;
-}
-
-export async function getCurrentUser() {
-  const response = await fetch(`${API_BASE}/auth/me`, {
-    method: 'GET',
-    credentials: 'include', // Incluir cookies en la solicitud
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-
-  const data: ApiResponse<any> = await response.json();
-
-  if (!data.success) {
-    throw new Error(data.error || 'No autenticado');
-  }
-
-  if (!response.ok) {
-    throw new Error(data.error || `Error ${response.status}`);
-  }
-
-  return data.data;
-}
+// Logout y getCurrentUser ya no son necesarios
+// La autenticación se maneja completamente del lado del cliente con sessionStorage
 

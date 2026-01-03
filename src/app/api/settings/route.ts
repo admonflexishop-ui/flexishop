@@ -51,7 +51,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    if (body.whatsapp && !isValidPhone(body.whatsapp)) {
+    // Validar default_whatsapp si está presente (el campo puede venir como default_whatsapp o whatsapp)
+    const whatsappValue = body.default_whatsapp || body.whatsapp;
+    if (whatsappValue && !isValidPhone(whatsappValue)) {
       return NextResponse.json(
         { success: false, error: 'Número de WhatsApp inválido' },
         { status: 400 }
