@@ -375,7 +375,7 @@ export function AdminDashboard({ onLogout }: { onLogout: () => Promise<void> }) 
                           setAccentLocal(v);
                         }}
                         placeholder="#F59E0B"
-                        className="input flex-1"
+                        className="input flex-1 hidden"
                         pattern="^#[0-9A-Fa-f]{6}$"
                         required
                       />

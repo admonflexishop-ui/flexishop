@@ -78,7 +78,7 @@ export default function PersonalizarPage() {
                   type="color"
                   value={isHex(accent) ? accent : '#F59E0B'}
                   onChange={(e) => setAccent(e.target.value)}
-                  className="h-10 w-12 cursor-pointer rounded-lg border border-neutral-200 bg-white p-1"
+                  className="hidden h-10 w-12 cursor-pointer rounded-lg border border-neutral-200 bg-white p-1"
                 />
               </div>
             </label>
