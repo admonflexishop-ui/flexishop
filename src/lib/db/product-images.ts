@@ -54,9 +54,12 @@ export async function upsertProductImage(data: CreateProductImage): Promise<Prod
     throw new Error('El producto no existe');
   }
 
-  // Verificar tamaño máximo (500 KB = 512000 bytes)
-  if (validatedData.bytes_size > 512000) {
-    throw new Error('La imagen no puede exceder 500 KB');
+  // Validar tamaño máximo optimizado para plan Hobby de Vercel
+  // libSQL/Turso puede manejar hasta ~100MB por registro, pero con plan Hobby
+  // el límite práctico es menor debido al timeout de 10 segundos
+  const MAX_DB_SIZE = 5 * 1024 * 1024; // 5 MB (optimizado para plan Hobby)
+  if (validatedData.bytes_size > MAX_DB_SIZE) {
+    throw new Error(`La imagen es demasiado grande. Tamaño máximo: ${(MAX_DB_SIZE / 1024 / 1024).toFixed(0)} MB (plan Hobby). Para archivos más grandes, actualiza a plan Pro.`);
   }
 
   // Convertir a Uint8Array para libSQL (libSQL funciona mejor con Uint8Array para BLOBs)

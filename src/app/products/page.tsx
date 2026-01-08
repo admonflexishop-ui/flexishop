@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { ProductCard } from '@/components/ProductCard';
+import { Loader } from '@/components/Loader';
 import type { Product } from '@/types';
 import { listProducts } from '@/lib/firestore';
 
@@ -32,17 +33,23 @@ export default function ProductsPage() {
   return (
     <AppShell>
       <div className="space-y-4">
-        {loading && <div className="text-sm text-neutral-500">Cargando...</div>}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader size="lg" text="Cargando productos..." />
+          </div>
+        )}
         {error && <div className="text-sm text-red-600">{error}</div>}
         {!loading && !error && products.length === 0 && (
           <div className="text-sm text-neutral-500">Sin productos aún.</div>
         )}
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {products.map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
-        </div>
+        {!loading && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {products.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        )}
       </div>
     </AppShell>
   );

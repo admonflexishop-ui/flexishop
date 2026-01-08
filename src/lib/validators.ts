@@ -120,16 +120,13 @@ export const CreateProductImageSchema = ProductImageSchema.omit({
 
 export const UpdateProductImageSchema = CreateProductImageSchema.partial();
 
-// Schema para validar archivos de imagen PNG
+// Schema para validar archivos de imagen
 export const ProductImageFileSchema = z.object({
   product_id: z.string().uuid(),
   file: z
     .instanceof(File)
-    .refine((file) => file.type === 'image/png', {
-      message: 'El archivo debe ser una imagen PNG',
-    })
-    .refine((file) => file.size <= 512000, {
-      message: 'El archivo no puede exceder 500 KB',
+    .refine((file) => file.type.startsWith('image/'), {
+      message: 'El archivo debe ser una imagen',
     }),
 });
 

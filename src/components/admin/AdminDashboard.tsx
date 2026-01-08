@@ -7,6 +7,7 @@ import { createBranch, createProduct, deleteBranch, deleteProduct, listBranches,
 import { useStore } from '@/lib/store';
 import { updateStoreConfig } from '@/lib/firestore';
 import * as api from '@/lib/api';
+import { Loader, Spinner } from '@/components/Loader';
 
 const tabs = [
   { id: 'products', label: 'Productos' },
@@ -470,13 +471,30 @@ function ProductForm({
   onCancel: () => void;
 }) {
   const [name, setName] = useState(initial.name);
-  const [price, setPrice] = useState(initial.price);
-  const [stock, setStock] = useState(initial.stock);
+  const [price, setPrice] = useState(initial.price ? String(initial.price) : '');
+  const [stock, setStock] = useState(initial.stock ? String(initial.stock) : '');
   const [description, setDescription] = useState(initial.description);
   const [active, setActive] = useState(initial.active);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const storeId = initial.storeId;
+
+  // Simular progreso de carga para dar feedback visual al usuario
+  useEffect(() => {
+    if (uploading && imageFile) {
+      // Simular progreso gradualmente (no es el progreso real, pero da feedback visual)
+      const interval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 90) return prev; // No llegar al 100% hasta que termine realmente
+          return prev + Math.random() * 10;
+        });
+      }, 200);
+      return () => clearInterval(interval);
+    } else {
+      setUploadProgress(0);
+    }
+  }, [uploading, imageFile]);
 
   return (
     <form
@@ -484,10 +502,27 @@ function ProductForm({
       onSubmit={async (e) => {
         e.preventDefault();
         setUploading(true);
+        setUploadProgress(0);
         try {
-          await onSave({ storeId, name, price: Number(price), stock: Number(stock), description, imageUrl: initial.imageUrl, active }, imageFile || undefined);
+          // Convertir precio y stock a números, manejando valores vacíos
+          const priceValue = price === '' || price === '0' ? 0 : parseFloat(String(price)) || 0;
+          const stockValue = stock === '' || stock === '0' ? 0 : parseInt(String(stock), 10) || 0;
+          
+          await onSave({ 
+            storeId, 
+            name, 
+            price: priceValue, 
+            stock: stockValue, 
+            description, 
+            imageUrl: initial.imageUrl, 
+            active 
+          }, imageFile || undefined);
+          setUploadProgress(100);
+          // Pequeña pausa para que el usuario vea que terminó
+          await new Promise(resolve => setTimeout(resolve, 300));
         } finally {
           setUploading(false);
+          setUploadProgress(0);
         }
       }}
     >
@@ -500,11 +535,41 @@ function ProductForm({
           <label className="mb-1 block text-sm font-medium">Precio (MXN)</label>
           <input
             className="input"
-            type="number"
-            step="0.01"
-            min="0"
+            type="text"
             value={price}
-            onChange={(e) => setPrice(Number(e.target.value))}
+            onChange={(e) => {
+              let value = e.target.value;
+              // Permitir números, punto decimal, y teclas de control
+              // Validar formato: números con máximo un punto decimal y 2 decimales
+              const priceRegex = /^\d*\.?\d{0,2}$/;
+              if (value === '' || priceRegex.test(value)) {
+                setPrice(value);
+              }
+            }}
+            onKeyDown={(e) => {
+              // Permitir teclas de control: Tab, Enter, Backspace, Delete, Arrow keys, Home, End
+              const allowedKeys = [
+                'Tab',
+                'Enter',
+                'Backspace',
+                'Delete',
+                'ArrowLeft',
+                'ArrowRight',
+                'ArrowUp',
+                'ArrowDown',
+                'Home',
+                'End',
+              ];
+              // Permitir Ctrl/Cmd + A, C, V, X
+              if (e.ctrlKey || e.metaKey) {
+                return;
+              }
+              // Si no es una tecla permitida y no es un número o punto, prevenir
+              if (!allowedKeys.includes(e.key) && !/[\d.]/.test(e.key)) {
+                e.preventDefault();
+              }
+            }}
+            placeholder="0.00"
             required
           />
         </div>
@@ -512,10 +577,40 @@ function ProductForm({
           <label className="mb-1 block text-sm font-medium">Stock</label>
           <input
             className="input"
-            type="number"
-            min="0"
+            type="text"
             value={stock}
-            onChange={(e) => setStock(Number(e.target.value))}
+            onChange={(e) => {
+              let value = e.target.value;
+              // Solo permitir números enteros
+              const numberRegex = /^\d*$/;
+              if (value === '' || numberRegex.test(value)) {
+                setStock(value);
+              }
+            }}
+            onKeyDown={(e) => {
+              // Permitir teclas de control: Tab, Enter, Backspace, Delete, Arrow keys, Home, End
+              const allowedKeys = [
+                'Tab',
+                'Enter',
+                'Backspace',
+                'Delete',
+                'ArrowLeft',
+                'ArrowRight',
+                'ArrowUp',
+                'ArrowDown',
+                'Home',
+                'End',
+              ];
+              // Permitir Ctrl/Cmd + A, C, V, X
+              if (e.ctrlKey || e.metaKey) {
+                return;
+              }
+              // Si no es una tecla permitida y no es un número, prevenir
+              if (!allowedKeys.includes(e.key) && !/[\d]/.test(e.key)) {
+                e.preventDefault();
+              }
+            }}
+            placeholder="0"
             required
           />
         </div>
@@ -525,29 +620,52 @@ function ProductForm({
         <textarea className="input" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
       </div>
       <div>
-        <label className="mb-1 block text-sm font-medium">Imagen (PNG, máximo 500 KB)</label>
+        <label className="mb-1 block text-sm font-medium">Imagen</label>
         <input
           className="input"
           type="file"
-          accept="image/png"
+          accept="image/*"
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) {
-              if (file.type !== 'image/png') {
-                alert('Solo se permiten archivos PNG');
+              if (!file.type.startsWith('image/')) {
+                alert('El archivo debe ser una imagen');
                 return;
               }
-              if (file.size > 512000) {
-                alert('El archivo no puede exceder 500 KB');
+              // Validar tamaño máximo (5 MB)
+              const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+              if (file.size > MAX_FILE_SIZE) {
+                alert(`El archivo es demasiado grande. Tamaño máximo permitido: 5 MB. Tu archivo: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+                e.target.value = ''; // Limpiar el input
                 return;
               }
               setImageFile(file);
             }
           }}
         />
+        <div className="mt-1 text-xs text-neutral-500">
+          Tamaño máximo: 5 MB. Formatos soportados: PNG, JPEG, GIF, WebP, SVG
+        </div>
         {imageFile && (
           <div className="mt-1 text-xs text-green-600">
-            Archivo seleccionado: {imageFile.name} ({(imageFile.size / 1024).toFixed(2)} KB)
+            Archivo seleccionado: {imageFile.name} ({(imageFile.size / 1024 / 1024).toFixed(2)} MB)
+          </div>
+        )}
+        {uploading && imageFile && (
+          <div className="mt-3 space-y-2 rounded-lg border border-neutral-200 p-3 bg-neutral-50">
+            <div className="flex items-center gap-2 text-sm text-neutral-700">
+              <Spinner size="sm" />
+              <span className="font-medium">Subiendo imagen...</span>
+            </div>
+            <div className="w-full bg-neutral-200 rounded-full h-2 overflow-hidden">
+              <div 
+                className="bg-accent h-2 rounded-full transition-all duration-300"
+                style={{ width: `${Math.min(uploadProgress, 100)}%` }}
+              />
+            </div>
+            <div className="text-xs text-neutral-500">
+              {uploadProgress < 90 ? 'Por favor espera, esto puede tardar unos momentos...' : 'Finalizando...'}
+            </div>
           </div>
         )}
         {initial.imageUrl && !imageFile && (
@@ -566,7 +684,14 @@ function ProductForm({
           Cancelar
         </button>
         <button type="submit" className="btn btn-accent w-full" disabled={uploading}>
-          {uploading ? 'Guardando...' : 'Guardar'}
+          {uploading ? (
+            <span className="flex items-center gap-2">
+              <Spinner size="sm" />
+              Guardando...
+            </span>
+          ) : (
+            'Guardar'
+          )}
         </button>
       </div>
     </form>

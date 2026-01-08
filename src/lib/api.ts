@@ -56,25 +56,52 @@ async function apiRequest<T>(
 
 async function apiFormDataRequest<T>(
   endpoint: string,
-  formData: FormData
+  formData: FormData,
+  options?: { timeout?: number }
 ): Promise<T> {
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    method: 'POST',
-    credentials: 'include', // Siempre incluir cookies
-    body: formData,
-  });
+  // Crear AbortController para timeout personalizado
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), options?.timeout || 120000); // 120 segundos por defecto
 
-  const data: ApiResponse<T> = await response.json();
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      method: 'POST',
+      credentials: 'include', // Siempre incluir cookies
+      body: formData,
+      signal: controller.signal,
+    });
 
-  if (!data.success) {
-    throw new Error(data.error || 'Error en la solicitud');
+    clearTimeout(timeoutId);
+
+    // Si la respuesta no es OK, intentar leer el error de JSON si es posible
+    if (!response.ok) {
+      const contentType = response.headers.get('content-type');
+      if (contentType?.includes('application/json')) {
+        const data: ApiResponse<T> = await response.json();
+        throw new Error(data.error || `Error ${response.status}`);
+      } else {
+        // Para errores 413 (Payload Too Large) u otros, puede que no sea JSON
+        const text = await response.text().catch(() => '');
+        throw new Error(text || `Error ${response.status}: ${response.statusText}`);
+      }
+    }
+
+    const data: ApiResponse<T> = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || 'Error en la solicitud');
+    }
+
+    return data.data as T;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    
+    if (error.name === 'AbortError') {
+      throw new Error('La solicitud tardó demasiado. Intenta con un archivo más pequeño o verifica tu conexión.');
+    }
+    
+    throw error;
   }
-
-  if (!response.ok) {
-    throw new Error(data.error || `Error ${response.status}`);
-  }
-
-  return data.data as T;
 }
 
 // ============
@@ -112,7 +139,17 @@ export async function deleteProduct(id: string) {
 export async function uploadProductImage(productId: string, file: File) {
   const formData = new FormData();
   formData.append('file', file);
-  return apiFormDataRequest<any>(`/products/${productId}/image`, formData);
+  
+  // Timeout optimizado para plan Hobby de Vercel (10 segundos máximo)
+  // Timeout calculado: 12s base + 0.5s por cada MB (conservador para plan Hobby)
+  const baseTimeout = 12000; // 12 segundos base
+  const fileSizeMB = file.size / (1024 * 1024);
+  const additionalTimeout = fileSizeMB * 500; // 0.5 segundos por MB
+  const timeout = Math.min(baseTimeout + additionalTimeout, 15000); // Máximo 15 segundos (buffer por encima del límite)
+  
+  return apiFormDataRequest<any>(`/products/${productId}/image`, formData, {
+    timeout: timeout,
+  });
 }
 
 export function getProductImageUrl(productId: string, cacheBuster?: string | number): string {

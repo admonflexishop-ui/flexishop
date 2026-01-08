@@ -4,6 +4,57 @@ import { CreateProductImageSchema } from '@/lib/validators';
 
 export const dynamic = 'force-dynamic';
 
+// Configurar duración máxima para plan Hobby de Vercel
+// Vercel Hobby: máximo 10 segundos de ejecución
+// Para archivos grandes, considera actualizar a plan Pro (60s) o Enterprise (300s)
+export const maxDuration = 10; // 10 segundos (máximo del plan Hobby)
+
+// Límite máximo de tamaño de archivo recomendado para plan Hobby (5 MB)
+// Archivos más grandes pueden no completarse en 10 segundos
+// Si necesitas archivos más grandes, actualiza a plan Pro de Vercel
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB en bytes (optimizado para plan Hobby)
+
+/**
+ * Detecta el tipo MIME de una imagen desde sus primeros bytes (magic numbers)
+ */
+function detectImageType(bytes: Uint8Array): string {
+  if (bytes.length < 4) {
+    return 'image/png'; // Default
+  }
+
+  // PNG: 89 50 4E 47
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) {
+    return 'image/png';
+  }
+
+  // JPEG: FF D8 FF
+  if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) {
+    return 'image/jpeg';
+  }
+
+  // GIF: 47 49 46 38 (GIF8)
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) {
+    return 'image/gif';
+  }
+
+  // WebP: RIFF...WEBP (más complejo, necesita más bytes)
+  if (bytes.length >= 12 && 
+      bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+      bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) {
+    return 'image/webp';
+  }
+
+  // SVG: empieza con '<svg' o '<?xml'
+  const textDecoder = new TextDecoder('utf-8', { fatal: false });
+  const header = textDecoder.decode(bytes.slice(0, Math.min(100, bytes.length)));
+  if (header.trim().startsWith('<svg') || header.trim().startsWith('<?xml')) {
+    return 'image/svg+xml';
+  }
+
+  // Default a PNG si no se puede detectar
+  return 'image/png';
+}
+
 /**
  * GET /api/products/[id]/image - Obtiene la imagen de un producto
  */
@@ -22,22 +73,25 @@ export async function GET(
     }
     
     // Asegurar que siempre sea Uint8Array
-    const pngBytes: Uint8Array = image.png_bytes instanceof Uint8Array 
+    const imageBytes: Uint8Array = image.png_bytes instanceof Uint8Array 
       ? image.png_bytes 
       : new Uint8Array(image.png_bytes as ArrayLike<number>);
     
-    // Crear un nuevo ArrayBuffer para evitar problemas de tipos con SharedArrayBuffer
-    const buffer = new ArrayBuffer(pngBytes.length);
-    const view = new Uint8Array(buffer);
-    view.set(pngBytes);
+    // Detectar el tipo MIME de la imagen desde los primeros bytes (magic numbers)
+    const contentType = detectImageType(imageBytes);
     
-    // Retornar la imagen como PNG con headers para evitar caché
+    // Crear un nuevo ArrayBuffer para evitar problemas de tipos con SharedArrayBuffer
+    const buffer = new ArrayBuffer(imageBytes.length);
+    const view = new Uint8Array(buffer);
+    view.set(imageBytes);
+    
+    // Retornar la imagen con headers para evitar caché
     // Usar updated_at como ETag para cache busting
     const etag = image.updated_at ? new Date(image.updated_at).getTime().toString() : Date.now().toString();
     
     return new NextResponse(buffer, {
       headers: {
-        'Content-Type': 'image/png',
+        'Content-Type': contentType,
         'Content-Length': image.bytes_size.toString(),
         'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
         'Pragma': 'no-cache',
@@ -90,22 +144,10 @@ export async function POST(
       );
     }
     
-    // Validar tipo MIME (verificar tanto el type como el nombre del archivo)
-    const validMimeTypes = ['image/png'];
-    const validExtensions = ['.png'];
-    const fileName = file.name.toLowerCase();
-    
-    if (!validMimeTypes.includes(file.type) || !validExtensions.some(ext => fileName.endsWith(ext))) {
+    // Validar que sea un archivo de imagen
+    if (!file.type.startsWith('image/')) {
       return NextResponse.json(
-        { success: false, error: 'El archivo debe ser una imagen PNG' },
-        { status: 400 }
-      );
-    }
-    
-    // Validar tamaño (500 KB = 512000 bytes)
-    if (file.size > 512000) {
-      return NextResponse.json(
-        { success: false, error: 'El archivo no puede exceder 500 KB' },
+        { success: false, error: 'El archivo debe ser una imagen' },
         { status: 400 }
       );
     }
@@ -117,16 +159,35 @@ export async function POST(
         { status: 400 }
       );
     }
+
+    // Validar tamaño máximo del archivo
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `El archivo es demasiado grande. Tamaño máximo permitido: ${(MAX_FILE_SIZE / 1024 / 1024).toFixed(0)} MB. Tu archivo: ${(file.size / 1024 / 1024).toFixed(2)} MB. Para archivos más grandes, considera actualizar a un plan Pro de Vercel.` 
+        },
+        { status: 413 } // 413 Payload Too Large
+      );
+    }
+    
+    // Advertencia para archivos que pueden acercarse al límite de tiempo
+    if (file.size > 3 * 1024 * 1024) { // Archivos > 3MB
+      console.log(`[UPLOAD] Archivo mediano detectado: ${file.name}, ${(file.size / 1024 / 1024).toFixed(2)} MB - Puede tardar varios segundos`);
+    }
     
     // Convertir File a Uint8Array
-    const pngBytes = await imageService.fileToUint8Array(file);
+    // Para archivos grandes, esto puede consumir memoria significativa
+    // Considerar usar streams en el futuro si hay problemas de memoria
+    const imageBytes = await imageService.fileToUint8Array(file);
     
     console.log('Tamaño del archivo:', file.size, 'bytes');
-    console.log('Tamaño del Uint8Array:', pngBytes.length);
+    console.log('Tipo MIME:', file.type);
+    console.log('Tamaño del Uint8Array:', imageBytes.length);
     
     const imageData = CreateProductImageSchema.parse({
       product_id: params.id,
-      png_bytes: pngBytes,
+      png_bytes: imageBytes, // Mantener el nombre del campo para compatibilidad con BD
       bytes_size: file.size,
     });
     
@@ -139,7 +200,28 @@ export async function POST(
     console.error('Error al guardar imagen:', error);
     console.error('Tipo de error:', error.constructor.name);
     console.error('Mensaje de error:', error.message);
-    console.error('Stack:', error.stack);
+    
+    // Manejo específico de errores de memoria o tamaño
+    if (error.message?.includes('allocation') || error.message?.includes('memory') || error.message?.includes('heap')) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'El archivo es demasiado grande para procesar. Intenta con una imagen más pequeña o comprime la imagen antes de subirla.' 
+        },
+        { status: 413 }
+      );
+    }
+
+    // Manejo de errores de timeout
+    if (error.message?.includes('timeout') || error.message?.includes('timed out') || error.message?.includes('Function execution exceeded')) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'La subida del archivo tardó demasiado (límite de 10 segundos en plan Hobby). Intenta con un archivo más pequeño (máximo 5 MB recomendado) o considera actualizar a un plan Pro de Vercel para archivos más grandes.' 
+        },
+        { status: 504 }
+      );
+    }
     
     if (error.name === 'ZodError') {
       console.error('Errores de validación Zod:', error.errors);
@@ -153,6 +235,14 @@ export async function POST(
       return NextResponse.json(
         { success: false, error: error.message },
         { status: 404 }
+      );
+    }
+
+    // Errores relacionados con tamaño de archivo
+    if (error.message?.includes('demasiado grande') || error.message?.includes('too large')) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 413 }
       );
     }
     

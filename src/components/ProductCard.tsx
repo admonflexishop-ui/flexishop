@@ -1,9 +1,11 @@
 'use client';
 
 import Image from 'next/image';
-import React from 'react';
+import React, { useState } from 'react';
 import type { Product } from '@/types';
 import { useCart } from '@/lib/cart';
+import { Spinner } from '@/components/Loader';
+import { ProductPlaceholder } from '@/components/ProductPlaceholder';
 
 function money(n: number) {
   return n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
@@ -11,20 +13,34 @@ function money(n: number) {
 
 export function ProductCard({ product }: { product: Product }) {
   const { add } = useCart();
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
 
   return (
     <div className="card overflow-hidden">
       <div className="relative aspect-square w-full bg-neutral-50">
-        {product.imageUrl ? (
-          <Image
-            src={product.imageUrl}
-            alt={product.name}
-            fill
-            className="object-fit"
-            sizes="(max-width: 768px) 100vw, 33vw"
-          />
+        {product.imageUrl && !imageError ? (
+          <>
+            {imageLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-neutral-100">
+                <Spinner size="md" />
+              </div>
+            )}
+            <Image
+              src={product.imageUrl}
+              alt={product.name}
+              fill
+              className={`object-cover transition-opacity duration-300 ${imageLoading ? 'opacity-0' : 'opacity-100'}`}
+              sizes="(max-width: 768px) 100vw, 33vw"
+              onLoad={() => setImageLoading(false)}
+              onError={() => {
+                setImageLoading(false);
+                setImageError(true);
+              }}
+            />
+          </>
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-sm text-neutral-400">Sin imagen</div>
+          <ProductPlaceholder />
         )}
       </div>
 

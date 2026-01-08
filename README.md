@@ -24,7 +24,7 @@ Sistema de e-commerce completo con panel de administración, gestión de product
 - ✅ **Gestión de Productos**: CRUD completo (Crear, Leer, Actualizar, Eliminar)
 - ✅ **Gestión de Sucursales**: CRUD completo con horarios, direcciones y teléfonos
 - ✅ **Configuración de Tienda**: Personalizar nombre, color de acento y número de WhatsApp
-- ✅ **Subida de Imágenes**: Soporte para imágenes PNG (máximo 500 KB por producto)
+- ✅ **Subida de Imágenes**: Soporte para imágenes en cualquier formato (PNG, JPEG, GIF, WebP, SVG) hasta 5 MB por producto (optimizado para plan Hobby de Vercel)
 
 ## 📋 Prerrequisitos
 
@@ -133,6 +133,26 @@ Ver `db.sql` para la estructura completa.
 - `GET /api/auth/me` - Obtener usuario actual
 
 ## 🚢 Deployment en Vercel
+
+### Configuración Actual: Plan Hobby
+
+La aplicación está **optimizada para el plan Hobby de Vercel**:
+
+- **Límite de ejecución**: 10 segundos máximo por request
+- **Tamaño máximo de archivo**: 5 MB recomendado
+- **Timeout configurado**: Hasta 15 segundos en el cliente (con buffer de seguridad)
+
+**Para archivos más grandes** (más de 5 MB), considera:
+1. **Actualizar a plan Pro** (60 segundos de ejecución, soporta hasta ~50 MB)
+2. **Comprimir imágenes** antes de subirlas usando herramientas online o del sistema
+3. **Usar servicio externo** (Cloudinary, ImageKit) para imágenes grandes y guardar solo la URL
+
+### Actualizar a Plan Pro
+
+Si necesitas manejar archivos más grandes:
+1. Actualiza a plan Pro en Vercel
+2. Cambia `maxDuration` en `src/app/api/products/[id]/image/route.ts` a `60`
+3. Aumenta `MAX_FILE_SIZE` a `50 * 1024 * 1024` (50 MB)
 
 ### Variables de Entorno en Vercel
 
